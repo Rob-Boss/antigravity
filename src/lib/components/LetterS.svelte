@@ -11,14 +11,16 @@
 	let mouseVx = 0;
 	let mouseVy = 0;
 
-	// Logical dimensions (fixed)
+	// Configuration Props
+	export let palette: string[] = []; // If empty, will use computed styles
+	export let hairLength = 15;
+	export let hairSpacing = 4;
+	export let hairThickness = 1;
+	export let hairVariance = 5;
+
+	// Internal
 	const LOGICAL_WIDTH = 200;
 	const LOGICAL_HEIGHT = 300;
-
-	// Configuration
-	const HAIR_SPACING = 4;
-	const HAIR_LENGTH = 15;
-	const HAIR_VARIANCE = 5;
 
 	interface Hair {
 		x: number; // Root X (Logical)
@@ -34,7 +36,7 @@
 	let hairs: Hair[] = [];
 
 	// The S path definition
-	const pathString =
+	export let pathString =
 		"M 150 50 Q 50 50 50 100 Q 50 150 150 150 Q 250 150 250 200 Q 250 250 150 250";
 
 	function initHairs() {
@@ -69,22 +71,25 @@
 			LOGICAL_HEIGHT,
 		).data;
 
-		const style = getComputedStyle(canvas);
-		const colors = [
-			style.getPropertyValue("--dry-sage").trim() || "#8ba59e",
-			style.getPropertyValue("--frosted-mint").trim() || "#f0ffce",
-			style.getPropertyValue("--text-primary").trim() || "#ffffff",
-		];
+		let colors = palette;
+		if (colors.length === 0) {
+			const style = getComputedStyle(canvas);
+			colors = [
+				style.getPropertyValue("--dry-sage").trim() || "#8ba59e",
+				style.getPropertyValue("--frosted-mint").trim() || "#f0ffce",
+				style.getPropertyValue("--text-primary").trim() || "#ffffff",
+			];
+		}
 
-		for (let y = 0; y < LOGICAL_HEIGHT; y += HAIR_SPACING) {
-			for (let x = 0; x < LOGICAL_WIDTH; x += HAIR_SPACING) {
+		for (let y = 0; y < LOGICAL_HEIGHT; y += hairSpacing) {
+			for (let x = 0; x < LOGICAL_WIDTH; x += hairSpacing) {
 				const index = (y * LOGICAL_WIDTH + x) * 4;
-				const rx = x + (Math.random() - 0.5) * HAIR_SPACING;
-				const ry = y + (Math.random() - 0.5) * HAIR_SPACING;
+				const rx = x + (Math.random() - 0.5) * hairSpacing;
+				const ry = y + (Math.random() - 0.5) * hairSpacing;
 
 				if (imageData[index + 3] > 0) {
 					const length =
-						HAIR_LENGTH + (Math.random() - 0.5) * HAIR_VARIANCE;
+						hairLength + (Math.random() - 0.5) * hairVariance;
 					const angle = Math.random() * Math.PI * 2;
 
 					hairs.push({
@@ -170,7 +175,7 @@
 			ctx!.quadraticCurveTo(cx, cy, hair.tipX, hair.tipY);
 
 			ctx!.strokeStyle = hair.color;
-			ctx!.lineWidth = lineWidth;
+			ctx!.lineWidth = lineWidth * hairThickness;
 			ctx!.globalAlpha = 0.7;
 			ctx!.stroke();
 			ctx!.globalAlpha = 1.0;

@@ -1,118 +1,134 @@
 <script lang="ts">
     import { spring } from "svelte/motion";
+    import { onMount, onDestroy } from "svelte";
+    import { browser } from "$app/environment";
+
+    // Props
+    export let path =
+        "M 50 250 L 70 250 M 60 250 L 60 50 M 50 50 L 80 50 L 110 50 Q 160 50 160 100 Q 160 150 110 150 L 60 150 M 100 150 Q 120 150 140 200 Q 160 250 180 250";
+    export let color = "#000000"; // Base color (used for core)
+
+    // Rainbow Prism Props
+    export let numLayers = 3; // Number of split layers
+    export let layerSpread = 20; // Max pixel spread
+    export let refractionSpeed = 0.1; // Spring stiffness
+    export let damping = 0.3; // Spring damping (lower = more bounce)
+    export let rainbowSpeed = 0; // Cycle colors over time (0 = static)
 
     let isHovered = false;
+    let container: HTMLDivElement;
+    let time = 0;
+    let animationFrameId: number;
 
-    // Spring for the turbulence baseFrequency
-    // x = baseFrequencyX, y = baseFrequencyY
-    const turbulence = spring(
-        { x: 0.01, y: 0.01 },
-        {
-            stiffness: 0.1,
-            damping: 0.2,
-        },
+    // Physics: Single spring for the "pull" vector
+    const pull = spring(
+        { x: 0, y: 0 },
+        { stiffness: refractionSpeed, damping: damping },
     );
 
-    // Spring for the displacement scale
-    const displacement = spring(0, {
-        stiffness: 0.1,
-        damping: 0.15,
+    // Generate layers
+    // We'll compute their offsets derived from the main pull spring
+    $: layers = Array.from({ length: numLayers }, (_, i) => {
+        // Normalized position from -0.5 to 0.5
+        const norm = numLayers > 1 ? i / (numLayers - 1) - 0.5 : 0;
+        return {
+            id: i,
+            norm,
+            // HSL Color: Spread across 360 degrees
+            // We can offset the hue based on time if rainbowSpeed > 0
+            hueOffset: (i / numLayers) * 360,
+        };
     });
+
+    function loop() {
+        if (rainbowSpeed > 0) {
+            time += rainbowSpeed;
+            if (browser) {
+                animationFrameId = requestAnimationFrame(loop);
+            }
+        }
+    }
+
+    // Only start loop in browser
+    $: if (browser && rainbowSpeed > 0 && !animationFrameId) {
+        loop();
+    }
+
+    onDestroy(() => {
+        if (browser && animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+    });
+
+    // Update spring stiffness when prop changes
+    $: {
+        pull.stiffness = refractionSpeed;
+        pull.damping = damping;
+    }
 
     function handleMouseMove(e: MouseEvent) {
         isHovered = true;
+        if (!container) return;
 
-        // Map mouse position to turbulence frequency
-        // This creates a "disturbance" that changes as you move across the letter
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        const x = (e.clientX - rect.left) / rect.width;
-        const y = (e.clientY - rect.top) / rect.height;
+        const rect = container.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
 
-        // Randomize slightly to feel organic
-        turbulence.set({
-            x: 0.02 + Math.abs(x - 0.5) * 0.1,
-            y: 0.02 + Math.abs(y - 0.5) * 0.1,
-        });
+        // Vector from center to mouse
+        // Normalized roughly to -1 to 1 range within the container
+        const nx = (e.clientX - centerX) / (rect.width / 2);
+        const ny = (e.clientY - centerY) / (rect.height / 2);
 
-        // Increase displacement when moving
-        displacement.set(30);
+        pull.set({ x: nx * layerSpread, y: ny * layerSpread });
     }
 
     function handleMouseLeave() {
         isHovered = false;
-        // Return to calm state
-        turbulence.set({ x: 0.01, y: 0.01 });
-        displacement.set(0);
-    }
-
-    function handleTouchMove(e: TouchEvent) {
-        e.preventDefault();
-        isHovered = true;
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        const touch = e.touches[0];
-        const x = (touch.clientX - rect.left) / rect.width;
-        const y = (touch.clientY - rect.top) / rect.height;
-
-        turbulence.set({
-            x: 0.02 + Math.abs(x - 0.5) * 0.1,
-            y: 0.02 + Math.abs(y - 0.5) * 0.1,
-        });
-        displacement.set(30);
+        pull.set({ x: 0, y: 0 });
     }
 </script>
 
 <div
     class="letter-container"
+    bind:this={container}
     on:mousemove={handleMouseMove}
     on:mouseleave={handleMouseLeave}
-    on:touchmove={handleTouchMove}
-    on:touchstart={handleTouchMove}
-    on:touchend={handleMouseLeave}
     role="presentation"
 >
-    <svg viewBox="0 0 200 300" class="letter-r">
-        <defs>
-            <filter id="ripple-filter">
-                <feTurbulence
-                    type="fractalNoise"
-                    baseFrequency="{$turbulence.x} {$turbulence.y}"
-                    numOctaves="2"
-                    result="turbulence"
+    <svg viewBox="-50 -50 300 400" class="letter-r">
+        <!-- Rainbow Layers -->
+        {#each layers as layer (layer.id)}
+            <g
+                style="
+					transform: translate({$pull.x * layer.norm * 2}px, {$pull.y *
+                    layer.norm *
+                    2}px); 
+					mix-blend-mode: screen;
+				"
+            >
+                <path
+                    d={path}
+                    fill="none"
+                    stroke="hsl({layer.hueOffset + time * 100}, 100%, 50%)"
+                    stroke-width="15"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    opacity="0.6"
                 />
-                <feDisplacementMap
-                    in2="turbulence"
-                    in="SourceGraphic"
-                    scale={$displacement}
-                    xChannelSelector="R"
-                    yChannelSelector="G"
-                />
-            </filter>
-        </defs>
+            </g>
+        {/each}
 
-        <g style="filter: url(#ripple-filter)">
-            <!-- The R Path -->
-            <path
-                d="M 60 250 L 60 50 L 120 50 Q 160 50 160 100 Q 160 150 120 150 L 60 150 M 100 150 L 150 250"
-                fill="none"
-                stroke="var(--text-primary)"
-                stroke-width="15"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="r-shape"
-            />
-
-            <!-- Inner highlight for liquid feel -->
-            <path
-                d="M 60 250 L 60 50 L 120 50 Q 160 50 160 100 Q 160 150 120 150 L 60 150 M 100 150 L 150 250"
-                fill="none"
-                stroke="var(--accent-glow)"
-                stroke-width="4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                opacity="0.5"
-                class="r-highlight"
-            />
-        </g>
+        <!-- Core (White/Bright) to keep legibility -->
+        <path
+            d={path}
+            fill="none"
+            stroke="white"
+            stroke-width="4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            opacity="0.8"
+            style="mix-blend-mode: overlay;"
+        />
     </svg>
 </div>
 
@@ -130,20 +146,11 @@
         overflow: visible;
     }
 
-    .r-shape {
-        transition: stroke 0.3s ease;
-    }
-
-    .letter-container:hover .r-shape {
-        stroke: var(--accent-glow);
-    }
-
     @media (max-width: 768px) {
         .letter-r {
             width: 150px;
             height: 225px;
         }
-
         .letter-container {
             padding: 1rem;
         }

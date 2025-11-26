@@ -7,13 +7,33 @@
     let lastMouseX = 0;
     let isHovered = false;
     let animationFrameId: number;
+    let time = 0;
+
+    // Props for Variations
+    export let path =
+        "M 110 250 C 50 250, 20 200, 20 150 C 20 100, 50 50, 110 50 C 140 50, 160 70, 170 90 L 170 20 C 170 10, 180 10, 180 20 L 180 240 C 180 250, 170 260, 160 250 L 160 250 C 160 250, 140 250, 110 250 Z"; // Default bubbly d
+    export let holePath =
+        "M 110 200 C 140 200, 150 180, 150 150 C 150 120, 140 100, 110 100 C 80 100, 70 120, 70 150 C 70 180, 80 200, 110 200 Z"; // Default hole
+    export let eyePosition = { x: 140, y: 110 };
+    export let eyeScale = 0.8;
+
+    export let squashFactor = 0; // 0 to 0.5 (flatten at speed)
+    export let blurStrength = 0; // 0 to 1 (opacity of trails)
+    export let colorShiftSpeed = 0; // 0 to 1 (hue rotation speed)
+    export let wobbleAmount = 0; // 0 to 20 (degrees of Z-wobble when slow)
+    export let thickness = 0; // 0 to 10 (simulated 3D layers)
+    export let blurColor = "#8be9fd"; // Default Cyan
+    export let color = "#5C7CFA"; // Default Blue
 
     // Physics constants
     const FRICTION = 0.98;
     const SENSITIVITY = 0.15;
-    const MAX_VELOCITY = 25;
+    const MAX_VELOCITY = 40;
+    // Removed SNAP_STRENGTH to restore free spin
 
     function update() {
+        time += 0.1;
+
         // Apply velocity
         rotation += velocity;
 
@@ -80,6 +100,38 @@
 
         lastMouseX = touch.clientX;
     }
+
+    // Derived values for effects
+    $: absVel = Math.abs(velocity);
+    $: velRatio = Math.min(absVel / MAX_VELOCITY, 1);
+
+    // Squash
+    $: currentScaleX = 1 + velRatio * squashFactor;
+    $: currentScaleY = 1 - velRatio * squashFactor * 0.6;
+
+    // Wobble
+    $: currentWobble =
+        absVel > 0.1 && absVel < 5
+            ? Math.sin(time * 2) * wobbleAmount * (1 - absVel / 5)
+            : 0;
+
+    // Color Shift
+    $: hueRotate =
+        colorShiftSpeed > 0
+            ? `hue-rotate(${absVel * colorShiftSpeed * 10}deg)`
+            : "";
+
+    // Face Logic with Hysteresis
+    // Eyes stay closed longer (lower threshold to open than to close)
+    let eyesClosed = false;
+    $: {
+        if (absVel > 10)
+            eyesClosed = true; // Close when moderately fast
+        else if (absVel < 0.5) eyesClosed = false; // Open only when almost stopped
+    }
+
+    // Combine path and holePath for evenodd fill rule (transparent hole)
+    $: combinedPath = holePath ? `${path} ${holePath}` : path;
 </script>
 
 <div
@@ -97,29 +149,107 @@
     role="presentation"
     style="perspective: 1000px;"
 >
-    <div class="letter-d-wrapper" style="transform: rotateY({rotation}deg);">
+    <div
+        class="letter-d-wrapper"
+        style="
+            transform:
+                rotateY({rotation}deg)
+                rotateZ({currentWobble}deg)
+                scale({currentScaleX}, {currentScaleY});
+            filter: {hueRotate};
+        "
+    >
         <svg viewBox="0 0 200 300" class="letter-d">
-            <!-- Front Face -->
+            <!-- Motion Blur Trails (Multi-layer) -->
+            {#if blurStrength > 0 && absVel > 2}
+                <!-- Trail 1 -->
+                <path
+                    d={combinedPath}
+                    fill={blurColor}
+                    fill-rule="evenodd"
+                    opacity={blurStrength * 0.4}
+                    transform="rotate({-velocity * 0.2}, 100, 150)"
+                />
+                <!-- Trail 2 -->
+                <path
+                    d={combinedPath}
+                    fill={blurColor}
+                    fill-rule="evenodd"
+                    opacity={blurStrength * 0.3}
+                    transform="rotate({-velocity * 0.4}, 100, 150)"
+                />
+                <!-- Trail 3 -->
+                <path
+                    d={combinedPath}
+                    fill={blurColor}
+                    fill-rule="evenodd"
+                    opacity={blurStrength * 0.2}
+                    transform="rotate({-velocity * 0.6}, 100, 150)"
+                />
+            {/if}
+
+            <!-- Body with Transparent Hole -->
             <path
-                d="M 60 50 L 60 250 C 160 250, 160 50, 60 50"
-                fill="none"
-                stroke="var(--text-primary)"
-                stroke-width="12"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="d-shape"
+                d={combinedPath}
+                fill={color}
+                stroke="none"
+                fill-rule="evenodd"
+                class="d-body"
             />
-            <!-- Inner highlight -->
-            <path
-                d="M 60 50 L 60 250 C 160 250, 160 50, 60 50"
-                fill="none"
-                stroke="var(--accent-glow)"
-                stroke-width="4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                opacity="0.5"
-                transform="scale(0.85) translate(15, 22)"
-            />
+
+            <!-- Face Group -->
+            <g
+                transform="translate({eyePosition.x}, {eyePosition.y}) scale({eyeScale})"
+            >
+                <!-- Eyes -->
+                {#if eyesClosed}
+                    <!-- Closed Eyes (Single Bold X) -->
+                    <path
+                        d="M -15 -15 L 15 15 M 15 -15 L -15 15"
+                        stroke="black"
+                        stroke-width="5"
+                        fill="none"
+                        stroke-linecap="round"
+                        transform="translate(-25, 0)"
+                    />
+                    <path
+                        d="M -15 -15 L 15 15 M 15 -15 L -15 15"
+                        stroke="black"
+                        stroke-width="5"
+                        fill="none"
+                        stroke-linecap="round"
+                        transform="translate(25, 0)"
+                    />
+                {:else}
+                    <!-- Open Eyes -->
+                    <g transform="translate(-25, 0)">
+                        <ellipse
+                            cx="0"
+                            cy="0"
+                            rx="15"
+                            ry="18"
+                            fill="white"
+                            stroke="black"
+                            stroke-width="2"
+                        />
+                        <circle cx="5" cy="0" r="6" fill="black" />
+                        <circle cx="8" cy="-3" r="2" fill="white" />
+                    </g>
+                    <g transform="translate(25, 0)">
+                        <ellipse
+                            cx="0"
+                            cy="0"
+                            rx="15"
+                            ry="18"
+                            fill="white"
+                            stroke="black"
+                            stroke-width="2"
+                        />
+                        <circle cx="-5" cy="0" r="6" fill="black" />
+                        <circle cx="-2" cy="-3" r="2" fill="white" />
+                    </g>
+                {/if}
+            </g>
         </svg>
     </div>
 </div>

@@ -6,13 +6,19 @@
     let animationFrameId: number;
     let isHovered = false;
 
+    // Configuration Props
+    export let character = "A";
+    export let fontFamily = "'Courier New', monospace"; // From Variant 7 (Matrix)
+    export let particleSize = 1; // From Variant 5 (Stardust)
+    export let particleDensity = 3; // From Variant 5 (Stardust)
+    export let particleColor = "#8ba59e"; // From Variant 5 (Stardust)
+    export let interactionRadius = 120; // From Variant 5 (Stardust)
+    export let restoreSpeed = 0.02; // From Variant 5 (Stardust)
+    export let volatility = 0.5; // From Variant 5 (Stardust)
+
     // Particle System Constants
-    const PARTICLE_SIZE = 3;
-    const PARTICLE_SPACING = 6; // Spacing between particles in the grid
-    const MOUSE_RADIUS = 80; // Radius of influence
-    const MOUSE_FORCE = 2; // Strength of repulsion
-    const RETURN_FORCE = 0.05; // Strength of return to origin
-    const DAMPING = 0.9; // Velocity damping
+    const MOUSE_FORCE = 2;
+    const DAMPING = 0.9;
 
     interface Particle {
         x: number;
@@ -29,57 +35,48 @@
     let mouseX = -1000;
     let mouseY = -1000;
 
-    // Define the shape of 'A' using a grid or path points
-    // Simple approach: Define a function that returns true if a point is inside the 'A' shape
-    function isInsideA(
-        x: number,
-        y: number,
-        width: number,
-        height: number,
-    ): boolean {
-        // Normalize coordinates to 0-1
-        const nx = x / width;
-        const ny = y / height;
-
-        // Define 'A' shape roughly
-        // Left leg
-        if (
-            ny > 0.2 &&
-            ny < 0.9 &&
-            Math.abs(nx - (0.5 - (ny - 0.2) * 0.3)) < 0.06
-        )
-            return true;
-        // Right leg
-        if (
-            ny > 0.2 &&
-            ny < 0.9 &&
-            Math.abs(nx - (0.5 + (ny - 0.2) * 0.3)) < 0.06
-        )
-            return true;
-        // Crossbar
-        if (ny > 0.6 && ny < 0.68 && Math.abs(nx - 0.5) < 0.15) return true;
-
-        return false;
-    }
-
     function initParticles() {
         if (!canvas) return;
-        const width = canvas.width;
-        const height = canvas.height;
+
+        // Use logical dimensions
+        const width = 200;
+        const height = 300;
+
         particles = [];
 
-        for (let x = 0; x < width; x += PARTICLE_SPACING) {
-            for (let y = 0; y < height; y += PARTICLE_SPACING) {
-                if (isInsideA(x, y, width, height)) {
+        const offscreen = document.createElement("canvas");
+        offscreen.width = width;
+        offscreen.height = height;
+        const offCtx = offscreen.getContext("2d");
+        if (!offCtx) return;
+
+        // Draw text
+        offCtx.fillStyle = "#000";
+        offCtx.font = `bold 250px ${fontFamily}`;
+        offCtx.textAlign = "center";
+        offCtx.textBaseline = "middle";
+        offCtx.fillText(character, width / 2, height / 2 + 20); // +20 for visual centering
+
+        const imageData = offCtx.getImageData(0, 0, width, height).data;
+
+        const style = getComputedStyle(canvas);
+        const defaultColor =
+            style.getPropertyValue("--text-primary").trim() || "#ffffff";
+        const pColor = particleColor || defaultColor;
+
+        for (let y = 0; y < height; y += particleDensity) {
+            for (let x = 0; x < width; x += particleDensity) {
+                const index = (y * width + x) * 4;
+                if (imageData[index + 3] > 128) {
                     particles.push({
                         x,
                         y,
                         originX: x,
                         originY: y,
-                        vx: 0,
-                        vy: 0,
-                        size: PARTICLE_SIZE + Math.random() * 2,
-                        color: "var(--text-primary)", // Will be computed in draw
+                        vx: (Math.random() - 0.5) * volatility,
+                        vy: (Math.random() - 0.5) * volatility,
+                        size: particleSize + Math.random(),
+                        color: pColor,
                     });
                 }
             }
@@ -94,8 +91,9 @@
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             // Repulsion force
-            if (distance < MOUSE_RADIUS) {
-                const force = (MOUSE_RADIUS - distance) / MOUSE_RADIUS;
+            if (distance < interactionRadius) {
+                const force =
+                    (interactionRadius - distance) / interactionRadius;
                 const angle = Math.atan2(dy, dx);
                 p.vx += Math.cos(angle) * force * MOUSE_FORCE;
                 p.vy += Math.sin(angle) * force * MOUSE_FORCE;
@@ -104,8 +102,14 @@
             // Return force (spring)
             const homeDx = p.originX - p.x;
             const homeDy = p.originY - p.y;
-            p.vx += homeDx * RETURN_FORCE;
-            p.vy += homeDy * RETURN_FORCE;
+            p.vx += homeDx * restoreSpeed;
+            p.vy += homeDy * restoreSpeed;
+
+            // Volatility (random noise)
+            if (volatility > 0) {
+                p.vx += (Math.random() - 0.5) * volatility * 0.1;
+                p.vy += (Math.random() - 0.5) * volatility * 0.1;
+            }
 
             // Damping
             p.vx *= DAMPING;
@@ -117,17 +121,35 @@
         });
     }
 
-    function draw() {
-        if (!ctx || !canvas) {
-            console.warn("Canvas or Context missing in draw");
-            return;
-        }
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function lerpColor(a: string, b: string, amount: number) {
+        const ah = parseInt(a.replace(/#/g, ""), 16),
+            ar = ah >> 16,
+            ag = (ah >> 8) & 0xff,
+            ab = ah & 0xff,
+            bh = parseInt(b.replace(/#/g, ""), 16),
+            br = bh >> 16,
+            bg = (bh >> 8) & 0xff,
+            bb = bh & 0xff,
+            rr = ar + amount * (br - ar),
+            rg = ag + amount * (bg - ag),
+            rb = ab + amount * (bb - ab);
 
-        // Get computed styles for colors
+        return (
+            "#" +
+            (((1 << 24) + (rr << 16) + (rg << 8) + rb) | 0)
+                .toString(16)
+                .slice(1)
+        );
+    }
+
+    function draw() {
+        if (!ctx || !canvas) return;
+
+        // Clear using logical dimensions (200x300)
+        ctx.clearRect(0, 0, 200, 300);
+
+        // Get computed styles for colors if needed
         const style = getComputedStyle(canvas);
-        const primaryColor =
-            style.getPropertyValue("--text-primary").trim() || "#ffffff";
         const glowColor =
             style.getPropertyValue("--accent-glow").trim() || "#f0ffce";
 
@@ -137,9 +159,17 @@
 
             // Calculate velocity magnitude for color interpolation
             const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-            const glowIntensity = Math.min(speed / 2, 1);
+            // Smoother transition: map speed 0-5 to 0-1
+            const glowIntensity = Math.min(speed / 5, 1);
 
-            ctx!.fillStyle = glowIntensity > 0.1 ? glowColor : primaryColor;
+            // Interpolate color if possible (only works for hex)
+            if (p.color.startsWith("#") && glowColor.startsWith("#")) {
+                ctx!.fillStyle = lerpColor(p.color, glowColor, glowIntensity);
+            } else {
+                // Fallback for non-hex colors
+                ctx!.fillStyle = glowIntensity > 0.1 ? glowColor : p.color;
+            }
+
             ctx!.fill();
         });
     }
@@ -152,43 +182,18 @@
 
     onMount(() => {
         ctx = canvas.getContext("2d");
-        // Handle high DPI displays
         const dpr = window.devicePixelRatio || 1;
         const rect = canvas.getBoundingClientRect();
 
-        // Set actual size in memory (scaled to account for extra pixel density)
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
 
-        // Normalize coordinate system to use css pixels.
-        ctx?.scale(dpr, dpr);
+        // Scale context to match logical size (200x300) to physical size
+        const scaleX = (rect.width * dpr) / 200;
+        const scaleY = (rect.height * dpr) / 300;
+        ctx?.scale(scaleX, scaleY);
 
-        // Re-init particles based on new logical width/height (which matches CSS size)
-        // We need to temporarily override width/height for initParticles logic to work with logical coords
-        const logicalWidth = rect.width;
-        const logicalHeight = rect.height;
-
-        // Custom init for scaled context
-        particles = [];
-
-        for (let x = 0; x < logicalWidth; x += PARTICLE_SPACING) {
-            for (let y = 0; y < logicalHeight; y += PARTICLE_SPACING) {
-                if (isInsideA(x, y, logicalWidth, logicalHeight)) {
-                    particles.push({
-                        x,
-                        y,
-                        originX: x,
-                        originY: y,
-                        vx: 0,
-                        vy: 0,
-                        size: PARTICLE_SIZE + Math.random(),
-                        color: "",
-                    });
-                }
-            }
-        }
-        console.log("Particles created:", particles.length);
-
+        initParticles();
         loop();
     });
 
@@ -198,8 +203,9 @@
 
     function handleMouseMove(e: MouseEvent) {
         const rect = canvas.getBoundingClientRect();
-        mouseX = e.clientX - rect.left;
-        mouseY = e.clientY - rect.top;
+        // Map mouse to logical coordinates (200x300)
+        mouseX = (e.clientX - rect.left) * (200 / rect.width);
+        mouseY = (e.clientY - rect.top) * (300 / rect.height);
         isHovered = true;
     }
 
@@ -213,8 +219,9 @@
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
         const touch = e.touches[0];
-        mouseX = touch.clientX - rect.left;
-        mouseY = touch.clientY - rect.top;
+        // Map touch to logical coordinates (200x300)
+        mouseX = (touch.clientX - rect.left) * (200 / rect.width);
+        mouseY = (touch.clientY - rect.top) * (300 / rect.height);
     }
 </script>
 

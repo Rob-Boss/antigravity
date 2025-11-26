@@ -5,10 +5,25 @@
   let isHovered = false;
   let animationFrameId: number;
 
-  // Physics constants
-  const TENSION = 0.1;
-  const DAMPING = 0.9;
-  const MAX_DISPLACEMENT = 60;
+  // Configuration Props
+  export let segments: { start: Point; end: Point }[] = [
+    // Standard W
+    { start: { x: 40, y: 50 }, end: { x: 70, y: 250 } },
+    { start: { x: 70, y: 250 }, end: { x: 100, y: 100 } },
+    { start: { x: 100, y: 100 }, end: { x: 130, y: 250 } },
+    { start: { x: 130, y: 250 }, end: { x: 160, y: 50 } },
+    // Double Vision Offset
+    { start: { x: 50, y: 60 }, end: { x: 80, y: 260 } },
+    { start: { x: 80, y: 260 }, end: { x: 110, y: 110 } },
+    { start: { x: 110, y: 110 }, end: { x: 140, y: 260 } },
+    { start: { x: 140, y: 260 }, end: { x: 170, y: 60 } },
+  ];
+  export let tension = 0.1;
+  export let damping = 0.9;
+  export let strokeWidth = 2;
+  export let color = "#ffd700";
+  export let glowColor = "#ffffff";
+  export let showGlow = true;
 
   interface Point {
     x: number;
@@ -22,10 +37,14 @@
     velocity: Point;
     target: Point; // The resting position of the control point (midpoint)
     isPlucked: boolean;
+    tension: number;
+    damping: number;
 
-    constructor(start: Point, end: Point) {
+    constructor(start: Point, end: Point, tension: number, damping: number) {
       this.start = start;
       this.end = end;
+      this.tension = tension;
+      this.damping = damping;
       // Midpoint is the resting position
       this.target = {
         x: (start.x + end.x) / 2,
@@ -38,14 +57,14 @@
 
     update() {
       // Spring force towards target
-      const forceX = (this.target.x - this.control.x) * TENSION;
-      const forceY = (this.target.y - this.control.y) * TENSION;
+      const forceX = (this.target.x - this.control.x) * this.tension;
+      const forceY = (this.target.y - this.control.y) * this.tension;
 
       this.velocity.x += forceX;
       this.velocity.y += forceY;
 
-      this.velocity.x *= DAMPING;
-      this.velocity.y *= DAMPING;
+      this.velocity.x *= this.damping;
+      this.velocity.y *= this.damping;
 
       this.control.x += this.velocity.x;
       this.control.y += this.velocity.y;
@@ -96,14 +115,9 @@
   let strings: StringPhysics[] = [];
 
   onMount(() => {
-    // Define the 4 strokes of the W
-    // Adjusted coordinates to center it nicely in 200x300
-    strings = [
-      new StringPhysics({ x: 40, y: 50 }, { x: 70, y: 250 }),
-      new StringPhysics({ x: 70, y: 250 }, { x: 100, y: 100 }),
-      new StringPhysics({ x: 100, y: 100 }, { x: 130, y: 250 }),
-      new StringPhysics({ x: 130, y: 250 }, { x: 160, y: 50 }),
-    ];
+    strings = segments.map(
+      (s) => new StringPhysics(s.start, s.end, tension, damping),
+    );
 
     loop();
   });
@@ -190,21 +204,23 @@
       <path
         d={s.getPath()}
         fill="none"
-        stroke="var(--text-secondary)"
-        stroke-width="6"
+        stroke={color}
+        stroke-width={strokeWidth}
         stroke-linecap="round"
         class="string"
       />
-      <!-- Glow string (duplicated for effect) -->
-      <path
-        d={s.getPath()}
-        fill="none"
-        stroke="var(--accent-glow)"
-        stroke-width="2"
-        stroke-linecap="round"
-        class="string-core"
-        opacity="0.6"
-      />
+      {#if showGlow}
+        <!-- Glow string (duplicated for effect) -->
+        <path
+          d={s.getPath()}
+          fill="none"
+          stroke={glowColor}
+          stroke-width={strokeWidth * 0.3}
+          stroke-linecap="round"
+          class="string-core"
+          opacity="0.6"
+        />
+      {/if}
     {/each}
   </svg>
 </div>

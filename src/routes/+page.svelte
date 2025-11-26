@@ -13,9 +13,28 @@
 			<LetterS />
 			<LetterW />
 			<LetterA />
-			<LetterR />
-			<LetterD />
-			<LetterY />
+			<LetterR
+				path="M 50 250 L 80 50 L 180 50 L 150 150 L 80 150 M 150 150 L 200 250"
+				numLayers={20}
+				layerSpread={60}
+				refractionSpeed={0.02}
+				damping={0.05}
+			/>
+			<LetterD
+				path="M 120 240 C 80 240, 60 210, 60 180 C 60 150, 80 120, 120 120 C 140 120, 150 130, 150 130 L 150 40 C 150 20, 170 10, 180 30 L 170 240 C 170 250, 160 260, 140 250"
+				holePath="M 120 210 C 140 210, 140 180, 140 160 C 140 140, 130 130, 120 130 C 100 130, 90 150, 90 180 C 90 200, 100 210, 120 210 Z"
+				eyePosition={{ x: 115, y: 170 }}
+				eyeScale={0.7}
+				squashFactor={0.2}
+				color="#ff69b4"
+				blurStrength={0.7}
+				blurColor="#87ceeb"
+			/>
+			<LetterY
+				shapeMode="thick"
+				color="#ffd700"
+				secondaryColor="#ffff00"
+			/>
 			<!-- Other letters will go here -->
 		</div>
 	</section>
