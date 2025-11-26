@@ -31,7 +31,7 @@
 				blurColor="#87ceeb"
 			/>
 			<LetterY
-				shapeMode="thick"
+				shapeMode="rounded"
 				color="#ffd700"
 				secondaryColor="#ffff00"
 			/>

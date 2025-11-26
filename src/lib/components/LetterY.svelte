@@ -12,7 +12,7 @@
         | "wide"
         | "narrow"
         | "rounded"
-        | "angular" = "classic";
+        | "angular" = "rounded";
     export let color = "#ffd700";
     export let secondaryColor = "#ffff00";
 
@@ -30,7 +30,7 @@
 
     // Magnetic cursor interaction
     let magnetStrength = 0;
-    const magnetSpring = spring(0, { stiffness: 0.1, damping: 0.3 });
+    const magnetSpring = spring(0, { stiffness: 0.12, damping: 0.25 });
 
     // Smooth amplitude ramping using spring
     const targetAmplitude = spring(1.5, { stiffness: 0.03, damping: 0.4 });
@@ -62,6 +62,15 @@
         { h: 10, s: 59, l: 40 }, // reddish-brown: #a53f2b
         { h: 25, s: 73, l: 17 }, // dark-walnut: #4c230a
         { h: 355, s: 100, l: 8 }, // rich-mahogany: #280004
+    ];
+
+    const confettiPalette = [
+        { h: 180, s: 100, l: 60 }, // Cyan
+        { h: 320, s: 100, l: 60 }, // Hot Pink
+        { h: 50, s: 100, l: 60 }, // Bright Yellow
+        { h: 140, s: 100, l: 60 }, // Lime Green
+        { h: 280, s: 100, l: 60 }, // Purple
+        { h: 10, s: 90, l: 60 }, // Bright Red
     ];
 
     function getYShapePoints(): { x: number; y: number }[] {
@@ -232,25 +241,47 @@
                 break;
 
             case "rounded":
-                // Rounded Y with circular joints
-                for (let i = 0; i < 60; i++) {
-                    const t = i / 60;
-                    points.push({ x: 100, y: 250 - t * 100 });
+                // Thick Rounded Y - No Bulge, High Density
+                const thickness = 14; // Width of the stroke
+                const density = 3; // Points per step
+
+                // Stem
+                for (let i = 0; i < 150; i++) {
+                    const t = i / 150;
+                    const baseX = 100;
+                    const baseY = 250 - t * 100;
+                    for (let j = 0; j < density; j++) {
+                        points.push({
+                            x: baseX + (Math.random() - 0.5) * thickness,
+                            y: baseY + (Math.random() - 0.5) * thickness,
+                        });
+                    }
                 }
-                // Rounded joint area
-                for (let angle = 0; angle < Math.PI * 2; angle += 0.3) {
-                    points.push({
-                        x: 100 + Math.cos(angle) * 12,
-                        y: 150 + Math.sin(angle) * 12,
-                    });
+
+                // Left Arm
+                for (let i = 0; i < 120; i++) {
+                    const t = i / 120;
+                    const baseX = 100 - t * 50;
+                    const baseY = 150 - t * 100;
+                    for (let j = 0; j < density; j++) {
+                        points.push({
+                            x: baseX + (Math.random() - 0.5) * thickness,
+                            y: baseY + (Math.random() - 0.5) * thickness,
+                        });
+                    }
                 }
-                for (let i = 0; i < 50; i++) {
-                    const t = i / 50;
-                    points.push({ x: 100 - t * 50, y: 150 - t * 100 });
-                }
-                for (let i = 0; i < 50; i++) {
-                    const t = i / 50;
-                    points.push({ x: 100 + t * 50, y: 150 - t * 100 });
+
+                // Right Arm
+                for (let i = 0; i < 120; i++) {
+                    const t = i / 120;
+                    const baseX = 100 + t * 50;
+                    const baseY = 150 - t * 100;
+                    for (let j = 0; j < density; j++) {
+                        points.push({
+                            x: baseX + (Math.random() - 0.5) * thickness,
+                            y: baseY + (Math.random() - 0.5) * thickness,
+                        });
+                    }
                 }
                 break;
 
@@ -277,11 +308,11 @@
 
     function initParticles() {
         particles = [];
-        // Use thick shape
-        shapeMode = "thick";
+        // Use rounded shape by default
+        shapeMode = "rounded";
         const shapePoints = getYShapePoints();
         shapePoints.forEach((point) => {
-            const jitter = 8;
+            const jitter = 6;
             const x = point.x + (Math.random() - 0.5) * jitter;
             const y = point.y + (Math.random() - 0.5) * jitter;
 
@@ -293,7 +324,7 @@
                 y,
                 baseX: x,
                 baseY: y,
-                size: 3 + Math.random() * 5,
+                size: 1.5 + Math.random() * 2.5,
                 baseHue: 0, // Grayscale at rest
                 hueShift: 0,
                 saturation: 0, // Grayscale
@@ -397,10 +428,12 @@
                     orbitIntensity;
 
                 // Color only magnetized particles
+                // Use confetti palette for magnetized state
                 const paletteColor =
-                    palette[
+                    confettiPalette[
                         Math.floor(
-                            (p.phaseOffset / (Math.PI * 2)) * palette.length,
+                            (p.phaseOffset / (Math.PI * 2)) *
+                                confettiPalette.length,
                         )
                     ];
 
@@ -432,8 +465,15 @@
             // Use magnetized color or grayscale
             ctx.fillStyle = `hsl(${colorHue}, ${colorSaturation}%, ${colorBrightness}%)`;
 
-            const width = p.size * 1.5;
-            const height = p.size * 1.2;
+            // 3D Orbit Scaling
+            // Scale based on orbit phase to simulate depth (larger when "in front", smaller when "behind")
+            // The orbit phase is already calculated as: time * 0.05 + p.phaseOffset
+            // We use cos because the orbitX uses sin, so cos gives us the z-depth
+            const orbitPhase = time * 0.05 + p.phaseOffset;
+            const depthScale = 1 + 0.4 * Math.cos(orbitPhase); // Oscillate between 0.6 and 1.4
+
+            const width = p.size * 1.5 * depthScale;
+            const height = p.size * 1.2 * depthScale;
             ctx.fillRect(-width / 2, -height / 2, width, height);
             ctx.restore();
         });
@@ -465,8 +505,7 @@
 
     function handleMouseLeave() {
         isHovered = false;
-        mouseX = 100;
-        mouseY = 150;
+        // Do not reset mouse position to prevent burst
     }
 
     function handleTouchMove(e: TouchEvent) {
@@ -486,6 +525,7 @@
     on:mouseleave={handleMouseLeave}
     on:touchmove={handleTouchMove}
     on:touchstart={handleTouchMove}
+    on:touchend={handleMouseLeave}
     role="presentation"
 >
     <canvas bind:this={canvas} class="letter-canvas"></canvas>

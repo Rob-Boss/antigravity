@@ -13,9 +13,9 @@
 
 	// Configuration Props
 	export let palette: string[] = []; // If empty, will use computed styles
-	export let hairLength = 15;
-	export let hairSpacing = 4;
-	export let hairThickness = 1;
+	export let hairLength = 25;
+	export let hairSpacing = 2;
+	export let hairThickness = 0.6;
 	export let hairVariance = 5;
 
 	// Internal
@@ -30,7 +30,72 @@
 		vx: number;
 		vy: number;
 		length: number;
-		color: string;
+		thickness: number;
+		baseH: number;
+		baseS: number;
+		baseL: number;
+	}
+
+	function hexToRgb(hex: string) {
+		const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+		return result
+			? {
+					r: parseInt(result[1], 16),
+					g: parseInt(result[2], 16),
+					b: parseInt(result[3], 16),
+				}
+			: null;
+	}
+
+	function rgbToHsl(r: number, g: number, b: number) {
+		(r /= 255), (g /= 255), (b /= 255);
+		const max = Math.max(r, g, b),
+			min = Math.min(r, g, b);
+		let h = 0,
+			s,
+			l = (max + min) / 2;
+
+		if (max == min) {
+			h = s = 0; // achromatic
+		} else {
+			const d = max - min;
+			s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+			switch (max) {
+				case r:
+					h = (g - b) / d + (g < b ? 6 : 0);
+					break;
+				case g:
+					h = (b - r) / d + 2;
+					break;
+				case b:
+					h = (r - g) / d + 4;
+					break;
+			}
+			h /= 6;
+		}
+
+		return { h: h * 360, s: s * 100, l: l * 100 };
+	}
+
+	function parseColor(color: string) {
+		// Handle hex
+		if (color.startsWith("#")) {
+			const rgb = hexToRgb(color);
+			if (rgb) return rgbToHsl(rgb.r, rgb.g, rgb.b);
+		}
+		// Handle rgb/rgba
+		if (color.startsWith("rgb")) {
+			const parts = color.match(/\d+/g);
+			if (parts && parts.length >= 3) {
+				return rgbToHsl(
+					parseInt(parts[0]),
+					parseInt(parts[1]),
+					parseInt(parts[2]),
+				);
+			}
+		}
+		// Fallback (return a default gray)
+		return { h: 0, s: 0, l: 50 };
 	}
 
 	let hairs: Hair[] = [];
@@ -55,10 +120,9 @@
 
 		// Scale and Center the path to fit nicely in 200x300
 		const scale = 0.7;
-		offCtx.translate(
-			LOGICAL_WIDTH / 2 - 150 * scale,
-			LOGICAL_HEIGHT / 2 - 150 * scale,
-		);
+		offCtx.translate(LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2);
+		offCtx.rotate((10 * Math.PI) / 180); // 10 degrees clockwise
+		offCtx.translate(-150 * scale, -150 * scale);
 		offCtx.scale(scale, scale);
 
 		const p = new Path2D(pathString);
@@ -88,9 +152,14 @@
 				const ry = y + (Math.random() - 0.5) * hairSpacing;
 
 				if (imageData[index + 3] > 0) {
-					const length =
-						hairLength + (Math.random() - 0.5) * hairVariance;
+					const length = hairLength * (0.7 + Math.random() * 0.6);
+					const thickness =
+						hairThickness * (0.5 + Math.random() * 1.0);
 					const angle = Math.random() * Math.PI * 2;
+
+					const colorStr =
+						colors[Math.floor(Math.random() * colors.length)];
+					const hsl = parseColor(colorStr);
 
 					hairs.push({
 						x: rx,
@@ -100,9 +169,10 @@
 						vx: 0,
 						vy: 0,
 						length,
-						color: colors[
-							Math.floor(Math.random() * colors.length)
-						],
+						thickness,
+						baseH: hsl.h,
+						baseS: hsl.s,
+						baseL: hsl.l,
 					});
 				}
 			}
@@ -147,8 +217,9 @@
 				hair.vy += mouseVy * force;
 
 				hair.vx -= (mdx / dist) * force * 2;
-				hair.vy -= (mdy / dist) * force * 2;
 			}
+
+			// Gravity removed
 
 			hair.vx *= FRICTION;
 			hair.vy *= FRICTION;
@@ -174,8 +245,18 @@
 			const cy = (hair.y + hair.tipY) / 2;
 			ctx!.quadraticCurveTo(cx, cy, hair.tipX, hair.tipY);
 
-			ctx!.strokeStyle = hair.color;
-			ctx!.lineWidth = lineWidth * hairThickness;
+			// Dynamic Lighting
+			// Calculate vertical component of direction (normalized)
+			// dy is -1 (up) to 1 (down)
+			const dy = (hair.tipY - hair.y) / hair.length;
+
+			// Adjust lightness: Up = Lighter, Down = Darker
+			// Range: +/- 15% lightness
+			const lighting = -dy * 15;
+			const currentL = Math.max(0, Math.min(100, hair.baseL + lighting));
+
+			ctx!.strokeStyle = `hsl(${hair.baseH}, ${hair.baseS}%, ${currentL}%)`;
+			ctx!.lineWidth = lineWidth * hair.thickness;
 			ctx!.globalAlpha = 0.7;
 			ctx!.stroke();
 			ctx!.globalAlpha = 1.0;
