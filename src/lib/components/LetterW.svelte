@@ -17,11 +17,16 @@
     { start: { x: 80, y: 260 }, end: { x: 110, y: 110 } },
     { start: { x: 110, y: 110 }, end: { x: 140, y: 260 } },
     { start: { x: 140, y: 260 }, end: { x: 170, y: 60 } },
+    // Triple Vision (Tight Center)
+    { start: { x: 60, y: 70 }, end: { x: 90, y: 270 } },
+    { start: { x: 90, y: 270 }, end: { x: 120, y: 120 } },
+    { start: { x: 120, y: 120 }, end: { x: 150, y: 270 } },
+    { start: { x: 150, y: 270 }, end: { x: 180, y: 70 } },
   ];
   export let tension = 0.1;
   export let damping = 0.9;
   export let strokeWidth = 2;
-  export let color = "#ffd700";
+  export let color = "#e3dac9"; // Bone White
   export let glowColor = "#ffffff";
   export let showGlow = true;
 
@@ -29,6 +34,15 @@
     x: number;
     y: number;
   }
+
+  const confettiPalette = [
+    "#00ffff", // Cyan
+    "#ff69b4", // Hot Pink
+    "#ffff00", // Bright Yellow
+    "#32cd32", // Lime Green
+    "#9370db", // Purple
+    "#ff4500", // Bright Red
+  ];
 
   class StringPhysics {
     start: Point;
@@ -39,6 +53,10 @@
     isPlucked: boolean;
     tension: number;
     damping: number;
+    pluckT: number; // 0 to 1, where the pluck happened
+    waveDist: number; // Distance the wave has traveled
+    pulseActive: boolean;
+    pulseColor: string;
 
     constructor(start: Point, end: Point, tension: number, damping: number) {
       this.start = start;
@@ -53,6 +71,10 @@
       this.control = { ...this.target };
       this.velocity = { x: 0, y: 0 };
       this.isPlucked = false;
+      this.pluckT = 0.5;
+      this.waveDist = 0;
+      this.pulseActive = false;
+      this.pulseColor = "#00ffff";
     }
 
     update() {
@@ -68,6 +90,15 @@
 
       this.control.x += this.velocity.x;
       this.control.y += this.velocity.y;
+
+      if (this.pulseActive) {
+        this.waveDist += 0.03; // Speed of the wave
+        if (this.waveDist > 1.5) {
+          // Allow it to go past ends
+          this.pulseActive = false;
+          this.waveDist = 0;
+        }
+      }
     }
 
     pluck(
@@ -92,6 +123,23 @@
         // Add a little random noise to make it feel organic
         this.velocity.x += (Math.random() - 0.5) * 5;
         this.velocity.y += (Math.random() - 0.5) * 5;
+
+        // Calculate pluck position (t) along the segment
+        // Project vector (mouse - start) onto (end - start)
+        const dx = this.end.x - this.start.x;
+        const dy = this.end.y - this.start.y;
+        const len2 = dx * dx + dy * dy;
+        const mx = mouseX - this.start.x;
+        const my = mouseY - this.start.y;
+        let t = (mx * dx + my * dy) / len2;
+        t = Math.max(0, Math.min(1, t));
+
+        // Trigger pulse
+        this.pulseActive = true;
+        this.pluckT = t;
+        this.waveDist = 0;
+        this.pulseColor =
+          confettiPalette[Math.floor(Math.random() * confettiPalette.length)];
       }
     }
 
@@ -200,11 +248,55 @@
     class="letter-w"
     class:hovered={isHovered}
   >
-    {#each strings as s}
+    {#each strings as s, i}
+      <defs>
+        <linearGradient
+          id="grad-{i}"
+          gradientUnits="userSpaceOnUse"
+          x1={s.start.x}
+          y1={s.start.y}
+          x2={s.end.x}
+          y2={s.end.y}
+        >
+          <!-- Base Color -->
+          <stop offset="0%" stop-color={color} />
+
+          <!-- Left Wave -->
+          <stop
+            offset="{Math.max(0, (s.pluckT - s.waveDist) * 100 - 10)}%"
+            stop-color={color}
+          />
+          <stop
+            offset="{Math.max(0, (s.pluckT - s.waveDist) * 100)}%"
+            stop-color={s.pulseColor}
+          />
+          <stop
+            offset="{Math.max(0, (s.pluckT - s.waveDist) * 100 + 10)}%"
+            stop-color={color}
+          />
+
+          <!-- Right Wave -->
+          <stop
+            offset="{Math.min(100, (s.pluckT + s.waveDist) * 100 - 10)}%"
+            stop-color={color}
+          />
+          <stop
+            offset="{Math.min(100, (s.pluckT + s.waveDist) * 100)}%"
+            stop-color={s.pulseColor}
+          />
+          <stop
+            offset="{Math.min(100, (s.pluckT + s.waveDist) * 100 + 10)}%"
+            stop-color={color}
+          />
+
+          <!-- Base Color -->
+          <stop offset="100%" stop-color={color} />
+        </linearGradient>
+      </defs>
       <path
         d={s.getPath()}
         fill="none"
-        stroke={color}
+        stroke={s.pulseActive ? `url(#grad-${i})` : color}
         stroke-width={strokeWidth}
         stroke-linecap="round"
         class="string"
@@ -221,6 +313,9 @@
           opacity="0.6"
         />
       {/if}
+      <!-- Pins at vertices -->
+      <circle cx={s.start.x} cy={s.start.y} r="2" fill="#888" />
+      <circle cx={s.end.x} cy={s.end.y} r="2" fill="#888" />
     {/each}
   </svg>
 </div>
@@ -243,9 +338,7 @@
     transition: stroke 0.3s ease;
   }
 
-  .letter-w:hover .string {
-    stroke: var(--text-primary);
-  }
+  /* Removed hover color change */
 
   .string-core {
     filter: drop-shadow(0 0 5px var(--accent-glow));

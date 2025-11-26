@@ -23,7 +23,7 @@
     export let wobbleAmount = 0; // 0 to 20 (degrees of Z-wobble when slow)
     export let thickness = 0; // 0 to 10 (simulated 3D layers)
     export let blurColor = "#8be9fd"; // Default Cyan
-    export let color = "#5C7CFA"; // Default Blue
+    export let color = "#8ba59e"; // Default Sage Green
 
     // Physics constants
     const FRICTION = 0.98;
@@ -162,37 +162,69 @@
         <svg viewBox="0 0 200 300" class="letter-d">
             <!-- Motion Blur Trails (Multi-layer) -->
             {#if blurStrength > 0 && absVel > 2}
-                <!-- Trail 1 -->
+                <!-- Trail 1 (Cyan) -->
                 <path
                     d={combinedPath}
-                    fill={blurColor}
+                    fill="none"
+                    stroke="#00ffff"
+                    stroke-width="4"
+                    fill-rule="evenodd"
+                    opacity={blurStrength * 0.8}
+                    style="mix-blend-mode: screen; filter: blur(2px);"
+                    transform="rotate({-velocity * 0.5}, 175, 150)"
+                />
+                <!-- Trail 2 (Hot Pink) -->
+                <path
+                    d={combinedPath}
+                    fill="none"
+                    stroke="#ff69b4"
+                    stroke-width="4"
+                    fill-rule="evenodd"
+                    opacity={blurStrength * 0.6}
+                    style="mix-blend-mode: screen; filter: blur(2px);"
+                    transform="rotate({-velocity * 1.0}, 175, 150)"
+                />
+                <!-- Trail 3 (Yellow) -->
+                <path
+                    d={combinedPath}
+                    fill="none"
+                    stroke="#ffff00"
+                    stroke-width="4"
                     fill-rule="evenodd"
                     opacity={blurStrength * 0.4}
-                    transform="rotate({-velocity * 0.2}, 100, 150)"
+                    style="mix-blend-mode: screen; filter: blur(2px);"
+                    transform="rotate({-velocity * 1.5}, 175, 150)"
                 />
-                <!-- Trail 2 -->
+                <!-- Trail 4 (Green) -->
                 <path
                     d={combinedPath}
-                    fill={blurColor}
+                    fill="none"
+                    stroke="#32cd32"
+                    stroke-width="4"
                     fill-rule="evenodd"
                     opacity={blurStrength * 0.3}
-                    transform="rotate({-velocity * 0.4}, 100, 150)"
+                    style="mix-blend-mode: screen; filter: blur(2px);"
+                    transform="rotate({-velocity * 2.0}, 175, 150)"
                 />
-                <!-- Trail 3 -->
+                <!-- Trail 5 (Purple) -->
                 <path
                     d={combinedPath}
-                    fill={blurColor}
+                    fill="none"
+                    stroke="#9370db"
+                    stroke-width="4"
                     fill-rule="evenodd"
                     opacity={blurStrength * 0.2}
-                    transform="rotate({-velocity * 0.6}, 100, 150)"
+                    style="mix-blend-mode: screen; filter: blur(2px);"
+                    transform="rotate({-velocity * 2.5}, 175, 150)"
                 />
             {/if}
 
             <!-- Body with Transparent Hole -->
             <path
                 d={combinedPath}
-                fill={color}
-                stroke="none"
+                fill="none"
+                stroke={color}
+                stroke-width="4"
                 fill-rule="evenodd"
                 class="d-body"
             />
@@ -270,6 +302,7 @@
         width: 200px;
         height: 300px;
         transform-style: preserve-3d;
+        transform-origin: 175px 150px;
         /* Will-change optimization for smooth rotation */
         will-change: transform;
     }
