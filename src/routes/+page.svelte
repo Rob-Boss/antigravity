@@ -5,11 +5,15 @@
 	import LetterR from "$lib/components/LetterR.svelte";
 	import LetterD from "$lib/components/LetterD.svelte";
 	import LetterY from "$lib/components/LetterY.svelte";
+	let innerWidth = 1000;
+	$: scale = Math.min(1, (innerWidth - 40) / 1100);
 </script>
+
+<svelte:window bind:innerWidth />
 
 <main>
 	<section class="letters-section">
-		<div class="letters-container">
+		<div class="letters-container" style="transform: scale({scale});">
 			<!-- S -->
 			<div
 				class="letter-wrapper"
@@ -130,10 +134,5 @@
 		height: 300px !important;
 	}
 
-	@media (max-width: 768px) {
-		/* Scale down the entire container for mobile */
-		.letters-container {
-			transform: scale(0.5);
-		}
-	}
+	/* Media query removed for smooth scaling */
 </style>

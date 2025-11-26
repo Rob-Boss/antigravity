@@ -134,9 +134,9 @@
     $: absVel = Math.abs(velocity);
     $: velRatio = Math.min(absVel / MAX_VELOCITY, 1);
 
-    // Squash
-    $: currentScaleX = 1 + velRatio * squashFactor;
-    $: currentScaleY = 1 - velRatio * squashFactor * 0.6;
+    // Squash (Thinner and Taller when fast)
+    $: currentScaleX = 1 - velRatio * squashFactor;
+    $: currentScaleY = 1 + velRatio * squashFactor * 0.6;
 
     // Wobble
     $: currentWobble =
