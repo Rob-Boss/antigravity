@@ -95,7 +95,7 @@
 		justify-content: center;
 		width: 100%;
 		position: relative;
-		padding-top: 20vh;
+		padding-top: max(20vh, 180px);
 	}
 
 	.letters-container {

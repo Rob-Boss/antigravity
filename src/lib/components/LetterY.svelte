@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
     import { spring } from "svelte/motion";
+    import { audio } from "$lib/audio";
 
     export let shapeMode:
         | "classic"
@@ -14,6 +15,8 @@
         | "rounded"
         | "angular" = "rounded";
     export let color = "#ffd700";
+    export let particleColor = "#ffffff";
+    export let audioVariant = 8; // Scanner
     export let secondaryColor = "#ffff00";
 
     let canvas: HTMLCanvasElement;
@@ -408,19 +411,22 @@
             let colorHue = 0;
             let colorBrightness = p.brightness;
 
-            if (distToMouse < magnetRadius) {
-                const magnetStrength =
+            const isMagnetic = distToMouse < magnetRadius;
+            let magneticStrength = 0;
+
+            if (isMagnetic) {
+                magneticStrength =
                     (1 - distToMouse / magnetRadius) * $magnetSpring;
-                const magnetForce = magnetStrength * 30;
+                const magnetForce = magneticStrength * 30;
                 const angle = Math.atan2(mouseY - p.baseY, mouseX - p.baseX);
 
                 // Tendril stretch - particles reaching far out stretch more
-                const stretchFactor = 1 + (1 - magnetStrength) * 2; // Far particles stretch more
+                const stretchFactor = 1 + (1 - magneticStrength) * 2; // Far particles stretch more
                 magnetX = Math.cos(angle) * magnetForce * stretchFactor;
                 magnetY = Math.sin(angle) * magnetForce * stretchFactor;
 
                 // Add orbital swirling motion (perpendicular to magnetic pull)
-                const orbitIntensity = magnetStrength * 15;
+                const orbitIntensity = magneticStrength * 15;
                 const orbitAngle = angle + Math.PI / 2;
                 const orbitPhase = time * 0.05 + p.phaseOffset;
                 orbitX =
@@ -445,12 +451,26 @@
                 // Interpolate brightness and saturation based on magnet strength
                 // This prevents the "dark creeping" effect by smoothly transitioning from resting brightness
                 colorHue = paletteColor.h;
-                colorSaturation = paletteColor.s * magnetStrength;
+                colorSaturation = paletteColor.s * magneticStrength;
 
                 // Lerp between resting brightness (p.brightness) and palette brightness (paletteColor.l)
                 colorBrightness =
                     p.brightness +
-                    (paletteColor.l - p.brightness) * magnetStrength;
+                    (paletteColor.l - p.brightness) * magneticStrength;
+
+                // Audio Trigger based on magnetic intensity
+                // Throttle to prevent audio engine overload (400 particles * 60fps is too much)
+                if (
+                    isMagnetic &&
+                    magneticStrength > 0 &&
+                    Math.random() < 0.01
+                ) {
+                    audio.playYVariant(
+                        audioVariant,
+                        magneticStrength,
+                        particles.length,
+                    );
+                }
             }
 
             p.x = p.baseX + individualWaveX + p.driftX + magnetX + orbitX;
@@ -506,6 +526,7 @@
         mouseX = (e.clientX - rect.left) * (200 / rect.width);
         mouseY = (e.clientY - rect.top) * (300 / rect.height);
         isHovered = true;
+        audio.resume();
     }
 
     function handleMouseLeave() {

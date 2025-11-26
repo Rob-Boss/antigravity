@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from "svelte";
+	import { audio } from "$lib/audio";
 
 	let canvas: HTMLCanvasElement;
 	let ctx: CanvasRenderingContext2D | null;
@@ -17,6 +18,7 @@
 	export let hairSpacing = 2;
 	export let hairThickness = 0.6;
 	export let hairVariance = 5;
+	export let audioVariant = 3; // Water
 
 	// Internal
 	const LOGICAL_WIDTH = 200;
@@ -359,6 +361,12 @@
 		mouseVy = y - mouseY;
 		mouseX = x;
 		mouseY = y;
+
+		const speed = Math.sqrt(mouseVx * mouseVx + mouseVy * mouseVy);
+		if (speed > 5) {
+			audio.resume();
+			audio.playSVariant(audioVariant, speed);
+		}
 	}
 
 	function handleTouchMove(e: TouchEvent) {

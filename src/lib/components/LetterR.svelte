@@ -2,6 +2,7 @@
     import { spring } from "svelte/motion";
     import { onMount, onDestroy } from "svelte";
     import { browser } from "$app/environment";
+    import { audio } from "$lib/audio";
 
     // Props
     export let path =
@@ -11,6 +12,7 @@
     // Rainbow Prism Props
     export let numLayers = 3; // Number of split layers
     export let layerSpread = 20; // Max pixel spread
+    export let audioVariant = 5; // Crystal
     export let refractionSpeed = 0.1; // Spring stiffness
     export let damping = 0.3; // Spring damping (lower = more bounce)
     export let rainbowSpeed = 0; // Cycle colors over time (0 = static)
@@ -80,6 +82,14 @@
         const ny = (e.clientY - centerY) / (rect.height / 2);
 
         pull.set({ x: nx * layerSpread, y: ny * layerSpread });
+
+        audio.resume();
+        // Play a glassy tone based on distance
+        const dist = Math.sqrt(nx * nx + ny * ny);
+        if (Math.random() > 0.8) {
+            // Don't play every frame
+            audio.playRVariant(audioVariant, 10, dist);
+        }
     }
 
     function handleMouseLeave() {

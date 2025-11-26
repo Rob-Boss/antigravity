@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
+    import { audio } from "$lib/audio";
 
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D | null;
@@ -9,7 +10,9 @@
     // Configuration Props
     export let character = "A";
     export let fontFamily = "'Courier New', monospace"; // From Variant 7 (Matrix)
-    export let particleSize = 1; // From Variant 5 (Stardust)
+    export let particleCount = 400;
+    export let particleSize = 2;
+    export let audioVariant = 4; // Glitch
     export let particleDensity = 3; // From Variant 5 (Stardust)
     export let particleColor = "#8ba59e"; // From Variant 5 (Stardust)
     export let interactionRadius = 120; // From Variant 5 (Stardust)
@@ -227,6 +230,16 @@
         mouseX = (e.clientX - rect.left) * (200 / rect.width);
         mouseY = (e.clientY - rect.top) * (300 / rect.height);
         isHovered = true;
+
+        audio.resume();
+        // Play a sound if moving fast
+        if (Math.abs(e.movementX) + Math.abs(e.movementY) > 5) {
+            // Random pitch for bubble effect
+            audio.playAVariant(
+                audioVariant,
+                Math.abs(e.movementX) + Math.abs(e.movementY),
+            );
+        }
     }
 
     function handleMouseLeave() {

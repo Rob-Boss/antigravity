@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { audio } from "$lib/audio";
 
   let svgElement: SVGSVGElement;
   let isHovered = false;
@@ -29,6 +30,7 @@
   export let color = "#e3dac9"; // Bone White
   export let glowColor = "#ffffff";
   export let showGlow = true;
+  export let audioVariant = 3; // Sitar
 
   interface Point {
     x: number;
@@ -140,6 +142,19 @@
         this.waveDist = 0;
         this.pulseColor =
           confettiPalette[Math.floor(Math.random() * confettiPalette.length)];
+
+        // Audio Trigger
+        audio.resume();
+        // Calculate a pitch based on string length (shorter = higher)
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const baseFreq = 80000 / len; // Inverse relationship
+
+        // Calculate pluck velocity
+        const pluckSpeed = Math.sqrt(
+          velocityX * velocityX + velocityY * velocityY,
+        );
+
+        audio.playWVariant(audioVariant, baseFreq, pluckSpeed);
       }
     }
 

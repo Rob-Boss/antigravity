@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
+    import { audio } from "$lib/audio";
 
     let container: HTMLDivElement;
     let rotation = 0;
@@ -8,6 +9,11 @@
     let isHovered = false;
     let animationFrameId: number;
     let time = 0;
+    let drone: {
+        setFreq: (f: number) => void;
+        setVol: (v: number) => void;
+        stop: () => void;
+    } | null = null;
 
     // Props for Variations
     export let path =
@@ -16,6 +22,8 @@
         "M 110 200 C 140 200, 150 180, 150 150 C 150 120, 140 100, 110 100 C 80 100, 70 120, 70 150 C 70 180, 80 200, 110 200 Z"; // Default hole
     export let eyePosition = { x: 140, y: 110 };
     export let eyeScale = 0.8;
+    export let scale = 1;
+    export let audioVariant = 0; // 0 to 9
 
     export let squashFactor = 0; // 0 to 0.5 (flatten at speed)
     export let blurStrength = 0; // 0 to 1 (opacity of trails)
@@ -75,20 +83,37 @@
         }
 
         animationFrameId = requestAnimationFrame(update);
+
+        // Update drone
+        if (drone) {
+            const speed = Math.abs(velocity);
+            drone.setFreq(100 + speed * 20);
+            drone.setVol(Math.min(speed / 10, 0.5));
+        } else if (Math.abs(velocity) > 0.1 && !drone) {
+            // Start drone if moving
+            drone = audio.createDDrone(audioVariant, 100);
+        } else if (Math.abs(velocity) < 0.1 && drone) {
+            // Stop drone if stopped
+            drone.stop();
+            drone = null;
+        }
     }
 
     onMount(() => {
+        drone = audio.createDrone(100, "triangle");
         update();
     });
 
     onDestroy(() => {
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        if (drone) drone.stop();
     });
 
     function handleMouseMove(e: MouseEvent) {
         if (!isHovered) {
             lastMouseX = e.clientX;
             isHovered = true;
+            audio.resume();
             return;
         }
 
