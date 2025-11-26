@@ -29,7 +29,17 @@
         vy: number;
         size: number;
         color: string;
+        targetColor: string;
     }
+
+    const confettiPalette = [
+        "#00ffff", // Cyan
+        "#ff69b4", // Hot Pink
+        "#ffff00", // Bright Yellow
+        "#32cd32", // Lime Green
+        "#9370db", // Purple
+        "#ff4500", // Bright Red
+    ];
 
     let particles: Particle[] = [];
     let mouseX = -1000;
@@ -77,6 +87,12 @@
                         vy: (Math.random() - 0.5) * volatility,
                         size: particleSize + Math.random(),
                         color: pColor,
+                        targetColor:
+                            confettiPalette[
+                                Math.floor(
+                                    Math.random() * confettiPalette.length,
+                                )
+                            ],
                     });
                 }
             }
@@ -163,11 +179,15 @@
             const glowIntensity = Math.min(speed / 5, 1);
 
             // Interpolate color if possible (only works for hex)
-            if (p.color.startsWith("#") && glowColor.startsWith("#")) {
-                ctx!.fillStyle = lerpColor(p.color, glowColor, glowIntensity);
+            if (p.color.startsWith("#") && p.targetColor.startsWith("#")) {
+                ctx!.fillStyle = lerpColor(
+                    p.color,
+                    p.targetColor,
+                    glowIntensity,
+                );
             } else {
                 // Fallback for non-hex colors
-                ctx!.fillStyle = glowIntensity > 0.1 ? glowColor : p.color;
+                ctx!.fillStyle = glowIntensity > 0.1 ? p.targetColor : p.color;
             }
 
             ctx!.fill();

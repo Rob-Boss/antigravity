@@ -241,20 +241,15 @@
                 break;
 
             case "rounded":
-                // Thick Rounded Y - Thicker, Squatter, Curved Bottom
-                const thickness = 24; // Thicker stroke
-                const density = 4; // Higher density for thickness
+                // Thick Rounded Y - No Bulge, High Density
+                const thickness = 14; // Width of the stroke
+                const density = 3; // Points per step
 
-                // Curved Stem (Lowercase style)
+                // Stem
                 for (let i = 0; i < 150; i++) {
                     const t = i / 150;
-                    // Curve from left (bottom) to center (top)
-                    // t=0 (bottom) -> x=60
-                    // t=1 (top) -> x=100
-                    const curve = (1 - t) * (1 - t) * 40;
-                    const baseX = 100 - curve;
-                    const baseY = 220 - t * 80; // 220 to 140 (Squatter)
-
+                    const baseX = 100;
+                    const baseY = 250 - t * 100;
                     for (let j = 0; j < density; j++) {
                         points.push({
                             x: baseX + (Math.random() - 0.5) * thickness,
@@ -264,10 +259,10 @@
                 }
 
                 // Left Arm
-                for (let i = 0; i < 100; i++) {
-                    const t = i / 100;
+                for (let i = 0; i < 120; i++) {
+                    const t = i / 120;
                     const baseX = 100 - t * 50;
-                    const baseY = 140 - t * 60; // 140 to 80
+                    const baseY = 150 - t * 100;
                     for (let j = 0; j < density; j++) {
                         points.push({
                             x: baseX + (Math.random() - 0.5) * thickness,
@@ -277,10 +272,10 @@
                 }
 
                 // Right Arm
-                for (let i = 0; i < 100; i++) {
-                    const t = i / 100;
+                for (let i = 0; i < 120; i++) {
+                    const t = i / 120;
                     const baseX = 100 + t * 50;
-                    const baseY = 140 - t * 60; // 140 to 80
+                    const baseY = 150 - t * 100;
                     for (let j = 0; j < density; j++) {
                         points.push({
                             x: baseX + (Math.random() - 0.5) * thickness,

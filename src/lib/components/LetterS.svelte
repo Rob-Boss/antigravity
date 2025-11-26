@@ -34,6 +34,11 @@
 		baseH: number;
 		baseS: number;
 		baseL: number;
+		// New fields for alignment coloring
+		neighbors: number[];
+		randomHue: number;
+		nx: number;
+		ny: number;
 	}
 
 	function hexToRgb(hex: string) {
@@ -173,10 +178,54 @@
 						baseH: hsl.h,
 						baseS: hsl.s,
 						baseL: hsl.l,
+						neighbors: [],
+						randomHue: Math.random() * 360,
+						nx: 0,
+						ny: 0,
 					});
 				}
 			}
 		}
+
+		// Build Spatial Grid for Neighbor Search
+		const cellSize = 15;
+		const grid: Record<string, number[]> = {};
+
+		hairs.forEach((h, i) => {
+			const cx = Math.floor(h.x / cellSize);
+			const cy = Math.floor(h.y / cellSize);
+			const key = `${cx},${cy}`;
+			if (!grid[key]) grid[key] = [];
+			grid[key].push(i);
+		});
+
+		// Find Neighbors
+		hairs.forEach((h, i) => {
+			const cx = Math.floor(h.x / cellSize);
+			const cy = Math.floor(h.y / cellSize);
+			const neighbors: number[] = [];
+
+			for (let dx = -1; dx <= 1; dx++) {
+				for (let dy = -1; dy <= 1; dy++) {
+					const key = `${cx + dx},${cy + dy}`;
+					const cellHairs = grid[key];
+					if (cellHairs) {
+						cellHairs.forEach((ni) => {
+							if (ni !== i) {
+								const nh = hairs[ni];
+								const dist = Math.sqrt(
+									(h.x - nh.x) ** 2 + (h.y - nh.y) ** 2,
+								);
+								if (dist <= cellSize) {
+									neighbors.push(ni);
+								}
+							}
+						});
+					}
+				}
+			}
+			h.neighbors = neighbors;
+		});
 	}
 
 	let currentScale = 1;
@@ -204,6 +253,7 @@
 		const minLineWidth = 1.5 / currentScale;
 		const lineWidth = Math.max(1, minLineWidth);
 
+		// Pass 1: Physics & Direction Calculation
 		hairs.forEach((hair) => {
 			// Mouse interaction
 			const mdx = mouseX - hair.x;
@@ -218,8 +268,6 @@
 
 				hair.vx -= (mdx / dist) * force * 2;
 			}
-
-			// Gravity removed
 
 			hair.vx *= FRICTION;
 			hair.vy *= FRICTION;
@@ -239,25 +287,58 @@
 				hair.vy *= 0.1;
 			}
 
+			// Calculate normalized direction for alignment
+			// Re-calculate tipDx/Dy after constraint
+			const finalDx = hair.tipX - hair.x;
+			const finalDy = hair.tipY - hair.y;
+			const len = Math.sqrt(finalDx * finalDx + finalDy * finalDy);
+			if (len > 0) {
+				hair.nx = finalDx / len;
+				hair.ny = finalDy / len;
+			}
+		});
+
+		// Pass 2: Alignment Calculation & Drawing
+		hairs.forEach((hair) => {
+			// Calculate Alignment (Order Parameter)
+			let sumNx = hair.nx;
+			let sumNy = hair.ny;
+
+			hair.neighbors.forEach((ni) => {
+				const nh = hairs[ni];
+				sumNx += nh.nx;
+				sumNy += nh.ny;
+			});
+
+			const count = hair.neighbors.length + 1;
+			const avgNx = sumNx / count;
+			const avgNy = sumNy / count;
+
+			// Alignment score (0 to 1)
+			// If vectors are aligned, length is close to 1. If random, close to 0.
+			const alignment = Math.sqrt(avgNx * avgNx + avgNy * avgNy);
+
+			// Color Logic
+			// Aligned = Rainbow (High Saturation)
+			// Random = Grey (Low Saturation)
+			// Use steeper power curve to make rainbow effect rarer (requires high alignment)
+			const saturation = Math.pow(alignment, 15) * 100;
+
+			// Lightness based on angle (3D effect)
+			const dy = hair.ny; // Normalized Y direction (-1 up, 1 down)
+			const lighting = -dy * 15;
+			const lightness = Math.max(0, Math.min(100, 50 + lighting));
+
 			ctx!.beginPath();
 			ctx!.moveTo(hair.x, hair.y);
+			// Use quadratic curve for slight bend visual
 			const cx = (hair.x + hair.tipX) / 2;
 			const cy = (hair.y + hair.tipY) / 2;
 			ctx!.quadraticCurveTo(cx, cy, hair.tipX, hair.tipY);
 
-			// Dynamic Lighting
-			// Calculate vertical component of direction (normalized)
-			// dy is -1 (up) to 1 (down)
-			const dy = (hair.tipY - hair.y) / hair.length;
-
-			// Adjust lightness: Up = Lighter, Down = Darker
-			// Range: +/- 15% lightness
-			const lighting = -dy * 15;
-			const currentL = Math.max(0, Math.min(100, hair.baseL + lighting));
-
-			ctx!.strokeStyle = `hsl(${hair.baseH}, ${hair.baseS}%, ${currentL}%)`;
+			ctx!.strokeStyle = `hsl(${hair.randomHue}, ${saturation}%, ${lightness}%)`;
 			ctx!.lineWidth = lineWidth * hair.thickness;
-			ctx!.globalAlpha = 0.7;
+			ctx!.globalAlpha = 0.8;
 			ctx!.stroke();
 			ctx!.globalAlpha = 1.0;
 		});

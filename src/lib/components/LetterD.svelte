@@ -34,15 +34,44 @@
     function update() {
         time += 0.1;
 
+        // Gravity: Pull towards 0 degrees (upright)
+        // Convert rotation to radians for sin calculation
+        // We want 0 to be stable, 180 to be unstable
+        // sin(0) = 0, sin(180) = 0
+        // We need a force that pushes back towards 0
+        // If rot is 10, force should be negative. sin(10) is positive. So -sin(rot).
+        const gravity = -Math.sin((rotation * Math.PI) / 180) * 0.4;
+
+        // Only apply gravity if not being interacted with (optional, but feels better)
+        if (!isHovered) {
+            velocity += gravity;
+        }
+
         // Apply velocity
         rotation += velocity;
 
         // Apply friction
-        velocity *= FRICTION;
+        let currentFriction = FRICTION;
 
-        // Stop if very slow
-        if (Math.abs(velocity) < 0.01) {
+        // Anti-Bounce / Soft Landing
+        // Check how close we are to upright (0, 360, -360, etc)
+        // Normalize rotation to -180 to 180 range for easier checking
+        let normalizedRot = rotation % 360;
+        if (normalizedRot > 180) normalizedRot -= 360;
+        if (normalizedRot < -180) normalizedRot += 360;
+
+        // If we are close to upright and moving slowly, apply heavy friction
+        if (Math.abs(normalizedRot) < 30 && Math.abs(velocity) < 3) {
+            currentFriction = 0.92; // Heavy friction
+        }
+
+        velocity *= currentFriction;
+
+        // Stop if very slow and practically upright
+        if (Math.abs(velocity) < 0.01 && Math.abs(normalizedRot) < 1) {
             velocity = 0;
+            // Optional: Snap to exactly 0 if desired, but natural stop is requested
+            // rotation = Math.round(rotation / 360) * 360;
         }
 
         animationFrameId = requestAnimationFrame(update);
@@ -149,76 +178,163 @@
     role="presentation"
     style="perspective: 1000px;"
 >
-    <div
-        class="letter-d-wrapper"
-        style="
-            transform:
-                rotateY({rotation}deg)
-                rotateZ({currentWobble}deg)
-                scale({currentScaleX}, {currentScaleY});
-            filter: {hueRotate};
-        "
-    >
-        <svg viewBox="0 0 200 300" class="letter-d">
-            <!-- Motion Blur Trails (Multi-layer) -->
-            {#if blurStrength > 0 && absVel > 2}
-                <!-- Trail 1 (Cyan) -->
+    <!-- Smear Trails (Separate Layers for 3D Rotation) -->
+    {#if blurStrength > 0 && absVel > 2}
+        <!-- Trail 1 (Cyan) -->
+        <div
+            class="letter-d-wrapper trail"
+            style="
+                transform: rotateY({rotation -
+                velocity * 1.5}deg) scale({currentScaleX}, {currentScaleY});
+                opacity: {blurStrength * 0.9};
+            "
+        >
+            <svg viewBox="0 0 200 300" class="letter-d">
                 <path
                     d={combinedPath}
                     fill="none"
                     stroke="#00ffff"
                     stroke-width="4"
                     fill-rule="evenodd"
-                    opacity={blurStrength * 0.8}
                     style="mix-blend-mode: screen; filter: blur(2px);"
-                    transform="rotate({-velocity * 0.5}, 175, 150)"
                 />
-                <!-- Trail 2 (Hot Pink) -->
+            </svg>
+        </div>
+        <!-- Trail 2 (Hot Pink) -->
+        <div
+            class="letter-d-wrapper trail"
+            style="
+                transform: rotateY({rotation -
+                velocity * 3.0}deg) scale({currentScaleX}, {currentScaleY});
+                opacity: {blurStrength * 0.85};
+            "
+        >
+            <svg viewBox="0 0 200 300" class="letter-d">
                 <path
                     d={combinedPath}
                     fill="none"
                     stroke="#ff69b4"
                     stroke-width="4"
                     fill-rule="evenodd"
-                    opacity={blurStrength * 0.6}
                     style="mix-blend-mode: screen; filter: blur(2px);"
-                    transform="rotate({-velocity * 1.0}, 175, 150)"
                 />
-                <!-- Trail 3 (Yellow) -->
+            </svg>
+        </div>
+        <!-- Trail 3 (Yellow) -->
+        <div
+            class="letter-d-wrapper trail"
+            style="
+                transform: rotateY({rotation -
+                velocity * 4.5}deg) scale({currentScaleX}, {currentScaleY});
+                opacity: {blurStrength * 0.8};
+            "
+        >
+            <svg viewBox="0 0 200 300" class="letter-d">
                 <path
                     d={combinedPath}
                     fill="none"
                     stroke="#ffff00"
                     stroke-width="4"
                     fill-rule="evenodd"
-                    opacity={blurStrength * 0.4}
                     style="mix-blend-mode: screen; filter: blur(2px);"
-                    transform="rotate({-velocity * 1.5}, 175, 150)"
                 />
-                <!-- Trail 4 (Green) -->
+            </svg>
+        </div>
+        <!-- Trail 4 (Green) -->
+        <div
+            class="letter-d-wrapper trail"
+            style="
+                transform: rotateY({rotation -
+                velocity * 6.0}deg) scale({currentScaleX}, {currentScaleY});
+                opacity: {blurStrength * 0.75};
+            "
+        >
+            <svg viewBox="0 0 200 300" class="letter-d">
                 <path
                     d={combinedPath}
                     fill="none"
                     stroke="#32cd32"
                     stroke-width="4"
                     fill-rule="evenodd"
-                    opacity={blurStrength * 0.3}
                     style="mix-blend-mode: screen; filter: blur(2px);"
-                    transform="rotate({-velocity * 2.0}, 175, 150)"
                 />
-                <!-- Trail 5 (Purple) -->
+            </svg>
+        </div>
+        <!-- Trail 5 (Purple) -->
+        <div
+            class="letter-d-wrapper trail"
+            style="
+                transform: rotateY({rotation -
+                velocity * 7.5}deg) scale({currentScaleX}, {currentScaleY});
+                opacity: {blurStrength * 0.7};
+            "
+        >
+            <svg viewBox="0 0 200 300" class="letter-d">
                 <path
                     d={combinedPath}
                     fill="none"
                     stroke="#9370db"
                     stroke-width="4"
                     fill-rule="evenodd"
-                    opacity={blurStrength * 0.2}
                     style="mix-blend-mode: screen; filter: blur(2px);"
-                    transform="rotate({-velocity * 2.5}, 175, 150)"
                 />
-            {/if}
+            </svg>
+        </div>
+        <!-- Trail 6 (Orange) -->
+        <div
+            class="letter-d-wrapper trail"
+            style="
+                transform: rotateY({rotation -
+                velocity * 9.0}deg) scale({currentScaleX}, {currentScaleY});
+                opacity: {blurStrength * 0.65};
+            "
+        >
+            <svg viewBox="0 0 200 300" class="letter-d">
+                <path
+                    d={combinedPath}
+                    fill="none"
+                    stroke="#ffa500"
+                    stroke-width="4"
+                    fill-rule="evenodd"
+                    style="mix-blend-mode: screen; filter: blur(2px);"
+                />
+            </svg>
+        </div>
+        <!-- Trail 7 (Electric Blue) -->
+        <div
+            class="letter-d-wrapper trail"
+            style="
+                transform: rotateY({rotation -
+                velocity * 10.5}deg) scale({currentScaleX}, {currentScaleY});
+                opacity: {blurStrength * 0.6};
+            "
+        >
+            <svg viewBox="0 0 200 300" class="letter-d">
+                <path
+                    d={combinedPath}
+                    fill="none"
+                    stroke="#1e90ff"
+                    stroke-width="4"
+                    fill-rule="evenodd"
+                    style="mix-blend-mode: screen; filter: blur(2px);"
+                />
+            </svg>
+        </div>
+    {/if}
 
+    <!-- Main Letter -->
+    <div
+        class="letter-d-wrapper main"
+        style="
+            transform:
+                rotateY({rotation}deg)
+                rotateZ({currentWobble}deg)
+                scale({currentScaleX}, {currentScaleY});
+            filter: {hueRotate};
+            z-index: 10;
+        "
+    >
+        <svg viewBox="0 0 200 300" class="letter-d">
             <!-- Body with Transparent Hole -->
             <path
                 d={combinedPath}
@@ -292,6 +408,9 @@
         padding: 2rem;
         cursor: grab;
         touch-action: none;
+        position: relative; /* Context for absolute layers */
+        width: 200px; /* Fixed size for layout */
+        height: 300px;
     }
 
     .letter-container:active {
@@ -299,10 +418,13 @@
     }
 
     .letter-d-wrapper {
-        width: 200px;
-        height: 300px;
+        position: absolute; /* Stack on top of each other */
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         transform-style: preserve-3d;
-        transform-origin: 175px 150px;
+        transform-origin: 100px 150px;
         /* Will-change optimization for smooth rotation */
         will-change: transform;
     }
