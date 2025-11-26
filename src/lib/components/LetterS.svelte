@@ -1,0 +1,282 @@
+<script lang="ts">
+	import { onMount, onDestroy } from "svelte";
+
+	let canvas: HTMLCanvasElement;
+	let ctx: CanvasRenderingContext2D | null;
+	let animationFrameId: number;
+	let mouseX = -1000;
+	let mouseY = -1000;
+	let lastMouseX = -1000;
+	let lastMouseY = -1000;
+	let mouseVx = 0;
+	let mouseVy = 0;
+
+	// Logical dimensions (fixed)
+	const LOGICAL_WIDTH = 200;
+	const LOGICAL_HEIGHT = 300;
+
+	// Configuration
+	const HAIR_SPACING = 4;
+	const HAIR_LENGTH = 15;
+	const HAIR_VARIANCE = 5;
+
+	interface Hair {
+		x: number; // Root X (Logical)
+		y: number; // Root Y (Logical)
+		tipX: number;
+		tipY: number;
+		vx: number;
+		vy: number;
+		length: number;
+		color: string;
+	}
+
+	let hairs: Hair[] = [];
+
+	// The S path definition
+	const pathString =
+		"M 150 50 Q 50 50 50 100 Q 50 150 150 150 Q 250 150 250 200 Q 250 250 150 250";
+
+	function initHairs() {
+		hairs = [];
+
+		const offscreen = document.createElement("canvas");
+		offscreen.width = LOGICAL_WIDTH;
+		offscreen.height = LOGICAL_HEIGHT;
+		const offCtx = offscreen.getContext("2d");
+		if (!offCtx) return;
+
+		offCtx.lineWidth = 40;
+		offCtx.lineCap = "round";
+		offCtx.lineJoin = "round";
+		offCtx.strokeStyle = "#000";
+
+		// Scale and Center the path to fit nicely in 200x300
+		const scale = 0.7;
+		offCtx.translate(
+			LOGICAL_WIDTH / 2 - 150 * scale,
+			LOGICAL_HEIGHT / 2 - 150 * scale,
+		);
+		offCtx.scale(scale, scale);
+
+		const p = new Path2D(pathString);
+		offCtx.stroke(p);
+
+		const imageData = offCtx.getImageData(
+			0,
+			0,
+			LOGICAL_WIDTH,
+			LOGICAL_HEIGHT,
+		).data;
+
+		const style = getComputedStyle(canvas);
+		const colors = [
+			style.getPropertyValue("--dry-sage").trim() || "#8ba59e",
+			style.getPropertyValue("--frosted-mint").trim() || "#f0ffce",
+			style.getPropertyValue("--text-primary").trim() || "#ffffff",
+		];
+
+		for (let y = 0; y < LOGICAL_HEIGHT; y += HAIR_SPACING) {
+			for (let x = 0; x < LOGICAL_WIDTH; x += HAIR_SPACING) {
+				const index = (y * LOGICAL_WIDTH + x) * 4;
+				const rx = x + (Math.random() - 0.5) * HAIR_SPACING;
+				const ry = y + (Math.random() - 0.5) * HAIR_SPACING;
+
+				if (imageData[index + 3] > 0) {
+					const length =
+						HAIR_LENGTH + (Math.random() - 0.5) * HAIR_VARIANCE;
+					const angle = Math.random() * Math.PI * 2;
+
+					hairs.push({
+						x: rx,
+						y: ry,
+						tipX: rx + Math.cos(angle) * length * 0.5,
+						tipY: ry + Math.sin(angle) * length * 0.5,
+						vx: 0,
+						vy: 0,
+						length,
+						color: colors[
+							Math.floor(Math.random() * colors.length)
+						],
+					});
+				}
+			}
+		}
+	}
+
+	let currentScale = 1;
+
+	function update() {
+		if (!ctx || !canvas) return;
+
+		// Clear using logical dimensions (since we are scaled)
+		// Actually, clearRect works in transformed space, so clearing 0,0,logicalW,logicalH works
+		// BUT, to be safe and clear everything, we can reset transform, clear, and restore transform
+		// OR just clear a massive area.
+		// Let's use the known logical size.
+		ctx.clearRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+
+		// Physics constants
+		const FRICTION = 0.8;
+		const REPULSION_RADIUS = 40;
+		const FORCE_MULTIPLIER = 0.8;
+
+		// Calculate line width to be at least 1px on screen
+		// currentScale is (screen pixels) / (logical pixels)
+		// We want screen_line_width >= 1
+		// logical_line_width * currentScale >= 1
+		// logical_line_width >= 1 / currentScale
+		const minLineWidth = 1.5 / currentScale;
+		const lineWidth = Math.max(1, minLineWidth);
+
+		hairs.forEach((hair) => {
+			// Mouse interaction
+			const mdx = mouseX - hair.x;
+			const mdy = mouseY - hair.y;
+			const dist = Math.sqrt(mdx * mdx + mdy * mdy);
+
+			if (dist < REPULSION_RADIUS) {
+				const force = (1 - dist / REPULSION_RADIUS) * FORCE_MULTIPLIER;
+
+				hair.vx += mouseVx * force;
+				hair.vy += mouseVy * force;
+
+				hair.vx -= (mdx / dist) * force * 2;
+				hair.vy -= (mdy / dist) * force * 2;
+			}
+
+			hair.vx *= FRICTION;
+			hair.vy *= FRICTION;
+
+			hair.tipX += hair.vx;
+			hair.tipY += hair.vy;
+
+			const tipDx = hair.tipX - hair.x;
+			const tipDy = hair.tipY - hair.y;
+			const tipDist = Math.sqrt(tipDx * tipDx + tipDy * tipDy);
+
+			if (tipDist > hair.length) {
+				const scale = hair.length / tipDist;
+				hair.tipX = hair.x + tipDx * scale;
+				hair.tipY = hair.y + tipDy * scale;
+				hair.vx *= 0.1;
+				hair.vy *= 0.1;
+			}
+
+			ctx!.beginPath();
+			ctx!.moveTo(hair.x, hair.y);
+			const cx = (hair.x + hair.tipX) / 2;
+			const cy = (hair.y + hair.tipY) / 2;
+			ctx!.quadraticCurveTo(cx, cy, hair.tipX, hair.tipY);
+
+			ctx!.strokeStyle = hair.color;
+			ctx!.lineWidth = lineWidth;
+			ctx!.globalAlpha = 0.7;
+			ctx!.stroke();
+			ctx!.globalAlpha = 1.0;
+		});
+
+		mouseVx *= 0.8;
+		mouseVy *= 0.8;
+
+		animationFrameId = requestAnimationFrame(update);
+	}
+
+	function handleMouseMove(e: MouseEvent) {
+		const rect = canvas.getBoundingClientRect();
+		// Map mouse to logical coordinates
+		const x = (e.clientX - rect.left) * (LOGICAL_WIDTH / rect.width);
+		const y = (e.clientY - rect.top) * (LOGICAL_HEIGHT / rect.height);
+
+		mouseVx = x - mouseX;
+		mouseVy = y - mouseY;
+		mouseX = x;
+		mouseY = y;
+	}
+
+	function handleTouchMove(e: TouchEvent) {
+		e.preventDefault();
+		const rect = canvas.getBoundingClientRect();
+		const touch = e.touches[0];
+		const x = (touch.clientX - rect.left) * (LOGICAL_WIDTH / rect.width);
+		const y = (touch.clientY - rect.top) * (LOGICAL_HEIGHT / rect.height);
+
+		mouseVx = x - mouseX;
+		mouseVy = y - mouseY;
+		mouseX = x;
+		mouseY = y;
+	}
+
+	onMount(() => {
+		ctx = canvas.getContext("2d");
+
+		// Initialize hairs ONCE using logical size
+		initHairs();
+
+		const resizeObserver = new ResizeObserver(() => {
+			const dpr = window.devicePixelRatio || 1;
+			const rect = canvas.getBoundingClientRect();
+
+			if (rect.width > 0 && rect.height > 0) {
+				canvas.width = rect.width * dpr;
+				canvas.height = rect.height * dpr;
+
+				// Set the scale so that drawing operations in LOGICAL coordinates
+				// map to the full physical canvas size
+				const scaleX = (rect.width * dpr) / LOGICAL_WIDTH;
+				const scaleY = (rect.height * dpr) / LOGICAL_HEIGHT;
+
+				currentScale = scaleX; // Store for update loop
+
+				ctx?.setTransform(1, 0, 0, 1, 0, 0);
+				ctx?.scale(scaleX, scaleY);
+			}
+		});
+
+		resizeObserver.observe(canvas);
+		update();
+
+		return () => {
+			resizeObserver.disconnect();
+		};
+	});
+
+	onDestroy(() => {
+		if (animationFrameId) cancelAnimationFrame(animationFrameId);
+	});
+</script>
+
+<div
+	class="letter-container"
+	on:mousemove={handleMouseMove}
+	on:touchmove={handleTouchMove}
+	on:touchstart={handleTouchMove}
+	role="presentation"
+>
+	<canvas bind:this={canvas} class="letter-s-canvas"></canvas>
+</div>
+
+<style>
+	.letter-container {
+		display: inline-block;
+		padding: 2rem;
+		cursor: crosshair;
+		touch-action: none;
+	}
+
+	.letter-s-canvas {
+		width: 200px;
+		height: 300px;
+	}
+
+	@media (max-width: 768px) {
+		.letter-s-canvas {
+			width: 150px;
+			height: 225px;
+		}
+
+		.letter-container {
+			padding: 1rem;
+		}
+	}
+</style>

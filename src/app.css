@@ -1,0 +1,46 @@
+/* Global Styles - Swardy Landing Page */
+
+:root {
+	/* Color Palette */
+	--dry-sage: #ccc9a1ff;
+	--frosted-mint: #f0ffceff;
+	--reddish-brown: #a53f2bff;
+	--dark-walnut: #4c230aff;
+	--rich-mahogany: #280004ff;
+
+	/* Semantic Color Assignments */
+	--bg-primary: var(--rich-mahogany);
+	--bg-secondary: var(--dark-walnut);
+	--text-primary: var(--frosted-mint);
+	--text-secondary: var(--dry-sage);
+	--accent-primary: var(--reddish-brown);
+	--accent-glow: var(--frosted-mint);
+
+	/* Typography */
+	font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+		Cantarell, sans-serif;
+}
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body {
+	background-color: var(--bg-primary);
+	color: var(--text-primary);
+	min-height: 100vh;
+	overflow-x: hidden;
+}
+
+/* Smooth scrolling */
+html {
+	scroll-behavior: smooth;
+}
+
+/* Remove default link styles */
+a {
+	color: inherit;
+	text-decoration: none;
+}
