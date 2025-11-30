@@ -17,28 +17,28 @@
 			<!-- S -->
 			<div
 				class="letter-wrapper"
-				style="transform: translate(-394px, 0px) scale(1); z-index: 1;"
+				style="transform: translate(-394px, 0px) scale(1); z-index: 1; --delay: 100ms;"
 			>
 				<LetterS />
 			</div>
 			<!-- W -->
 			<div
 				class="letter-wrapper"
-				style="transform: translate(-214px, 0px) scale(1); z-index: 1;"
+				style="transform: translate(-214px, 0px) scale(1); z-index: 1; --delay: 300ms;"
 			>
 				<LetterW />
 			</div>
 			<!-- A -->
 			<div
 				class="letter-wrapper"
-				style="transform: translate(-34px, 0px) scale(1); z-index: 1;"
+				style="transform: translate(-34px, 0px) scale(1); z-index: 1; --delay: 500ms;"
 			>
 				<LetterA />
 			</div>
 			<!-- R -->
 			<div
 				class="letter-wrapper"
-				style="transform: translate(126px, 11px) scale(1); z-index: 1;"
+				style="transform: translate(126px, 11px) scale(1); z-index: 1; --delay: 700ms;"
 			>
 				<LetterR
 					path="M 50 250 L 80 50 L 180 50 L 150 150 L 80 150 M 150 150 L 200 250"
@@ -51,7 +51,7 @@
 			<!-- D -->
 			<div
 				class="letter-wrapper"
-				style="transform: translate(267px, 0px) scale(0.9); z-index: 10;"
+				style="transform: translate(267px, 0px) scale(0.9); z-index: 10; --delay: 900ms;"
 			>
 				<LetterD
 					path="M 120 240 C 80 240, 60 210, 60 180 C 60 150, 80 120, 120 120 C 140 120, 150 130, 150 130 L 150 40 C 150 20, 170 10, 180 30 L 170 240 C 170 250, 160 260, 140 250 Z"
@@ -66,7 +66,7 @@
 			<!-- Y -->
 			<div
 				class="letter-wrapper"
-				style="transform: translate(438px, 50px) scale(1.1); z-index: 1;"
+				style="transform: translate(438px, 50px) scale(1.1); z-index: 1; --delay: 1100ms;"
 			>
 				<LetterY
 					shapeMode="rounded"
@@ -135,4 +135,42 @@
 	}
 
 	/* Media query removed for smooth scaling */
+
+	/* --- Entrance Animation: Neon Flicker --- */
+	.letter-wrapper {
+		animation: neon-flicker 2s steps(1) backwards;
+		animation-delay: var(--delay);
+	}
+
+	@keyframes neon-flicker {
+		0% {
+			opacity: 0;
+			filter: brightness(0);
+		}
+		5% {
+			opacity: 1;
+			filter: brightness(2) drop-shadow(0 0 10px currentColor);
+		}
+		10% {
+			opacity: 0;
+		}
+		15% {
+			opacity: 0.5;
+		}
+		20% {
+			opacity: 1;
+			filter: brightness(2) drop-shadow(0 0 10px currentColor);
+		}
+		25% {
+			opacity: 0;
+		}
+		35% {
+			opacity: 1;
+			filter: brightness(1.5);
+		}
+		100% {
+			opacity: 1;
+			filter: brightness(1);
+		}
+	}
 </style>
