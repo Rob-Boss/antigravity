@@ -8,6 +8,7 @@
     let audioEngine: AudioEngine;
     let isPlaying = false;
     let currentStep = -1;
+    let currentDuration = 0;
     let isWin = false;
 
     // Game State
@@ -133,9 +134,14 @@
                     };
                 });
 
-            audioEngine.start(sequence, currentProgram.tempo, (step) => {
-                currentStep = step;
-            });
+            audioEngine.start(
+                sequence,
+                currentProgram.tempo,
+                (step, duration) => {
+                    currentStep = step;
+                    currentDuration = duration;
+                },
+            );
             isPlaying = true;
         }
     }
@@ -310,6 +316,7 @@
                     index={i}
                     cartridge={cartridges.find((c) => c.location === i)}
                     isCurrent={currentStep === i}
+                    duration={currentStep === i ? currentDuration : 0}
                     {selectedCartridgeId}
                     onDrop={(id) => handleDropOnSlot(i, id)}
                     onPreview={handlePreview}

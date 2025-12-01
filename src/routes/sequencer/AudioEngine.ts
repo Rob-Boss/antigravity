@@ -8,7 +8,7 @@ export class AudioEngine {
     private scheduleAheadTime: number = 0.1; // How far ahead to schedule audio (sec)
     private sequence: any[] = [];
     private tempo: number = 120;
-    private onStepCallback: ((step: number) => void) | null = null;
+    private onStepCallback: ((step: number, duration: number) => void) | null = null;
 
     constructor() {
         // We initialize the context lazily on first user interaction usually, 
@@ -28,7 +28,7 @@ export class AudioEngine {
         this.initContext();
     }
 
-    public start(sequence: any[], tempo: number, onStep: (step: number) => void) {
+    public start(sequence: any[], tempo: number, onStep: (step: number, duration: number) => void) {
         this.initContext();
         this.sequence = sequence;
         this.tempo = tempo;
@@ -203,21 +203,26 @@ export class AudioEngine {
         // But let's try to be helpful and provide a "Draw" callback v	private scheduleNote(stepNumber: number, time: number) {
         // Notify UI
         const timeToPlay = time - this.ctx!.currentTime;
-        setTimeout(() => {
-            if (this.onStepCallback && this.isPlaying) {
-                this.onStepCallback(stepNumber);
-            }
-        }, timeToPlay * 1000);
 
+        let duration = 60.0 / this.tempo;
         const step = this.sequence[stepNumber];
         if (step && step.cartridgeId !== null) {
-            let duration = 60.0 / this.tempo;
-
             if (this.currentProgramId === 1 && this.sampleBuffers.has(step.cartridgeId)) {
                 const buffer = this.sampleBuffers.get(step.cartridgeId);
                 if (buffer) {
                     duration = buffer.duration;
                 }
+            }
+        }
+
+        setTimeout(() => {
+            if (this.onStepCallback && this.isPlaying) {
+                this.onStepCallback(stepNumber, duration);
+            }
+        }, timeToPlay * 1000);
+
+        if (step && step.cartridgeId !== null) {
+            if (this.currentProgramId === 1 && this.sampleBuffers.has(step.cartridgeId)) {
                 this.playSample(time, step.cartridgeId, false, duration);
             } else {
                 this.playSynth(step.cartridgeId, time, false, duration);

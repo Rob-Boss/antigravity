@@ -4,6 +4,7 @@
     export let index: number;
     export let cartridge: any = null;
     export let isCurrent: boolean = false;
+    export let duration: number = 0;
     export let selectedCartridgeId: number | null = null;
     export let onDrop: (id: number) => void;
     export let onPreview: (id: number) => void;
@@ -41,6 +42,8 @@
             <Cartridge
                 id={cartridge.id}
                 selected={selectedCartridgeId === cartridge.id}
+                playing={isCurrent}
+                {duration}
                 on:click={(e) => {
                     e.stopPropagation();
                     onPreview(cartridge.id);

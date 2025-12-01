@@ -2,6 +2,8 @@
     export let id: number;
     export let label: string = "";
     export let selected: boolean = false;
+    export let playing: boolean = false;
+    export let duration: number = 0;
 
     function handleDragStart(e: DragEvent) {
         if (e.dataTransfer) {
@@ -21,6 +23,12 @@
     on:click
     on:mouseenter
 >
+    {#if playing}
+        <div
+            class="progress-overlay"
+            style="animation-duration: {duration}s"
+        ></div>
+    {/if}
     <div class="grip"></div>
     <div class="label">
         {label || `CART_${id.toString().padStart(2, "0")}`}
@@ -45,6 +53,37 @@
             transform 0.1s,
             box-shadow 0.1s;
         user-select: none;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .progress-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 0%;
+        background: linear-gradient(
+            to top,
+            rgba(255, 176, 0, 0.2),
+            rgba(255, 255, 255, 0.8)
+        );
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+        animation: progress linear forwards;
+        pointer-events: none;
+        z-index: 1;
+        mix-blend-mode: overlay;
+    }
+
+    @keyframes progress {
+        from {
+            height: 0%;
+            opacity: 0.5;
+        }
+        to {
+            height: 100%;
+            opacity: 1;
+        }
     }
 
     .cartridge.selected {

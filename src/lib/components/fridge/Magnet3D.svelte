@@ -50,14 +50,16 @@
     <!-- Magnet Shadow/Border -->
     <T.Mesh position={[0, 0, -0.006]}>
         <T.BoxGeometry
-            args={[0.022 + magnet.word.length * 0.02, 0.062, 0.01]}
+            args={[0.0176 + magnet.word.length * 0.016, 0.0496, 0.01]}
         />
         <T.MeshBasicMaterial color="#cccccc" />
     </T.Mesh>
 
     <!-- Magnet Base -->
     <T.Mesh userData={{ isMagnet: true, id: magnet.id }}>
-        <T.BoxGeometry args={[0.02 + magnet.word.length * 0.02, 0.06, 0.01]} />
+        <T.BoxGeometry
+            args={[0.016 + magnet.word.length * 0.016, 0.048, 0.01]}
+        />
         <T.MeshBasicMaterial color="#ffffff" />
     </T.Mesh>
 
@@ -65,7 +67,7 @@
     <!-- Text -->
     <Text
         text={magnet.word}
-        fontSize={0.035}
+        fontSize={0.028}
         color="#000000"
         position={[0, 0, 0.006]}
         anchorX="center"
