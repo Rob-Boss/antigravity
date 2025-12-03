@@ -1,6 +1,7 @@
 <script lang="ts">
     export let id: number;
     export let label: string = "";
+    export let icon: string = "";
     export let selected: boolean = false;
     export let playing: boolean = false;
     export let duration: number = 0;
@@ -31,7 +32,11 @@
     {/if}
     <div class="grip"></div>
     <div class="label">
-        {label || `CART_${id.toString().padStart(2, "0")}`}
+        {#if icon}
+            <span class="icon">{icon}</span>
+        {:else}
+            {label || `CART_${id.toString().padStart(2, "0")}`}
+        {/if}
     </div>
     <div class="connectors"></div>
 </div>
@@ -120,6 +125,17 @@
         background: #000;
         color: #ffb000;
         margin: 0 4px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 1.5rem;
+    }
+
+    .icon {
+        font-size: 1rem;
+        line-height: 1;
+        font-family: "Courier New", monospace;
+        letter-spacing: -2px;
     }
 
     .connectors {

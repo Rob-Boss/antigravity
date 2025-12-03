@@ -38,6 +38,7 @@
             <div class="cartridge-wrapper">
                 <Cartridge
                     id={cart.id}
+                    icon={cart.icon}
                     selected={selectedCartridgeId === cart.id}
                     on:click={() => onPreview(cart.id)}
                     on:mouseenter={() => onHover(cart.id)}
@@ -51,32 +52,37 @@
     .shelf {
         width: 100%;
         min-height: 120px;
-        border: 2px dashed rgba(255, 176, 0, 0.3);
-        background: rgba(255, 176, 0, 0.05);
+        border: 1px solid #332200;
+        background: #111;
         padding: 1rem;
         margin-top: 2rem;
         position: relative;
+        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+        border-radius: 4px;
     }
 
     .shelf-label {
         position: absolute;
         top: -10px;
         left: 10px;
-        background: #0a0500;
+        background: #1a1a1a;
         padding: 0 5px;
-        color: rgba(255, 176, 0, 0.5);
+        color: #ffb000;
         font-size: 0.8rem;
+        border: 1px solid #332200;
+        border-radius: 2px;
     }
 
     .cartridge-container {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
         gap: 1rem;
-        justify-content: center;
+        justify-items: center;
     }
 
     .cartridge-wrapper {
-        width: 60px;
-        height: 80px;
+        width: 100%;
+        aspect-ratio: 0.75;
+        height: auto;
     }
 </style>

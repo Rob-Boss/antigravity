@@ -41,6 +41,7 @@
         {#if cartridge}
             <Cartridge
                 id={cartridge.id}
+                icon={cartridge.icon}
                 selected={selectedCartridgeId === cartridge.id}
                 playing={isCurrent}
                 {duration}
@@ -60,20 +61,24 @@
 <style>
     .slot {
         aspect-ratio: 1;
-        border: 1px solid rgba(255, 176, 0, 0.3);
+        border: 1px solid #332200;
         position: relative;
         transition: all 0.1s;
-        background: rgba(255, 176, 0, 0.05);
+        background: #000;
         padding: 4px;
+        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+        border-radius: 2px;
     }
 
     .slot:hover {
         border-color: #ffb000;
-        background: rgba(255, 176, 0, 0.1);
+        box-shadow: inset 0 0 15px rgba(255, 176, 0, 0.2);
     }
 
     .slot.current {
-        box-shadow: 0 0 20px #ffb000;
+        box-shadow:
+            0 0 10px #ffb000,
+            inset 0 0 10px #ffb000;
         border-color: #ffb000;
         z-index: 2;
     }
@@ -91,12 +96,22 @@
         font-size: 0.8rem;
         opacity: 0.3;
         position: absolute;
+        bottom: 2px;
+        right: 4px;
+        color: #554400;
     }
 
     .placeholder {
         width: 100%;
         height: 100%;
-        border: 1px dashed rgba(255, 176, 0, 0.2);
+        border: 1px dashed rgba(255, 176, 0, 0.1);
         border-radius: 4px;
+        background: repeating-linear-gradient(
+            45deg,
+            rgba(0, 0, 0, 0),
+            rgba(0, 0, 0, 0) 5px,
+            rgba(255, 176, 0, 0.05) 5px,
+            rgba(255, 176, 0, 0.05) 10px
+        );
     }
 </style>

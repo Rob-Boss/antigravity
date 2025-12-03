@@ -84,10 +84,10 @@ function createMagnetStore() {
                         magnets.push({
                             id: crypto.randomUUID(),
                             word: item.word,
-                            x: (Math.random() - 0.5) * 1.8,
-                            y: -0.5, // Default to center of fridge
+                            x: (Math.random() - 0.5) * 1.7,
+                            y: Math.random() > 0.5 ? 0.75 + Math.random() * 0.7 : -1.6 + Math.random() * 2.1,
                             z: 0.56,
-                            rotation: 0
+                            rotation: (Math.random() - 0.5) * 0.1
                         });
                     }
                 }

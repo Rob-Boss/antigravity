@@ -34,10 +34,18 @@
         playDropSound();
     }
 
+    function getRelativePointerPosition(event: PointerEvent) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        return {
+            x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
+            y: -((event.clientY - rect.top) / rect.height) * 2 + 1,
+        };
+    }
+
     function handlePointerDown(event: PointerEvent) {
-        // Normalize pointer
-        pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-        pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        const { x, y } = getRelativePointerPosition(event);
+        pointer.x = x;
+        pointer.y = y;
 
         raycaster.setFromCamera(pointer, $camera);
 
@@ -60,9 +68,9 @@
     function handlePointerMove(event: PointerEvent) {
         if (!draggingId) return;
 
-        // Normalize pointer coordinates
-        pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-        pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        const { x, y } = getRelativePointerPosition(event);
+        pointer.x = x;
+        pointer.y = y;
 
         raycaster.setFromCamera(pointer, $camera);
 

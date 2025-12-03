@@ -10,6 +10,27 @@
     let currentStep = -1;
     let currentDuration = 0;
     let isWin = false;
+    let statusMessage = "";
+    let isSolving = false;
+
+    const ICONS = [
+        "█▀",
+        "▓▒",
+        "░█",
+        "▄▀",
+        "■□",
+        "▪▫",
+        "╔╗",
+        "╚╝",
+        "▐▌",
+        "◢◣",
+        "◤◥",
+        "▞▚",
+        "▖▗",
+        "▘▝",
+        "═║",
+        "╬╪",
+    ];
 
     // Game State
     interface Program {
@@ -36,10 +57,23 @@
     interface CartridgeState {
         id: number;
         location: "shelf" | number;
+        icon: string;
     }
 
     let cartridges: CartridgeState[] = [];
     let selectedCartridgeId: number | null = null;
+
+    let scale = 1;
+    let contentHeight = 0;
+    let contentWidth = 0;
+
+    function updateScale() {
+        if (typeof window !== "undefined" && contentHeight && contentWidth) {
+            const hScale = window.innerHeight / (contentHeight + 40);
+            const wScale = window.innerWidth / (contentWidth + 40);
+            scale = Math.min(hScale, wScale, 1);
+        }
+    }
 
     onMount(() => {
         audioEngine = new AudioEngine();
@@ -54,7 +88,20 @@
         audioEngine.loadSamples(sampleUrls);
 
         loadProgram(1);
+
+        window.addEventListener("resize", updateScale);
+
+        // Initial scale update
+        updateScale();
+
+        return () => {
+            window.removeEventListener("resize", updateScale);
+        };
     });
+
+    $: if (contentHeight || contentWidth) {
+        updateScale();
+    }
 
     function handleGlobalClick() {
         audioEngine.resume();
@@ -69,31 +116,20 @@
         isPlaying = false;
         currentStep = -1;
         isWin = false;
+        statusMessage = "";
+
+        // Shuffle icons for this program
+        // We use a simple shuffle here, but ideally we'd use the seed
+        const shuffledIcons = shuffle([...ICONS]);
 
         // Initialize cartridges for this program
-        // We'll reset them to shelf and shuffle based on program seed (or just random for now)
         cartridges = Array(16)
             .fill(null)
             .map((_, i) => ({
                 id: i,
                 location: "shelf",
+                icon: shuffledIcons[i],
             }));
-
-        // For now, simple shuffle. In a real game, maybe the seed determines the "correct" order?
-        // But here "correct" order is always 0-15 in slots 0-15.
-        // So we just need to shuffle their starting positions on the shelf (which is visual only)
-        // actually, the shelf is just a list.
-        // To make it a puzzle, the "sound" of cartridge X should probably change per program?
-        // Or the "correct" sequence changes?
-        // The user said "16 cartridges in random order... figure out the proper order".
-        // If the cartridges are labeled 1-16, the order is obvious.
-        // BUT, if we hide the labels or if the labels don't match the slot index...
-        // For now, let's assume the labels are visible and the goal is just to put them in order 1-16.
-        // Wait, "listen and try and figure out the proper order" implies the labels might not be the guide.
-        // But I haven't implemented hidden labels.
-        // Let's stick to the current implementation: Cartridges have IDs. Win = Slot[i] has Cart[i].
-        // So the puzzle is trivial if labels are shown.
-        // But I'll leave the labels for now as per previous step.
 
         cartridges = shuffle(cartridges);
     }
@@ -194,7 +230,7 @@
     }
 
     function handleCartridgeHover(id: number) {
-        if (!isPlaying) {
+        if (!isPlaying && !isSolving) {
             audioEngine.previewNote(id);
         }
     }
@@ -227,22 +263,20 @@
                     if (p.id === 5) return { ...p, locked: false };
                     return p;
                 });
-                setTimeout(
-                    () => alert("ALL SYSTEMS OPERATIONAL. PROGRAM 5 UNLOCKED."),
-                    100,
-                );
+                statusMessage = "ALL SYSTEMS OPERATIONAL. PROGRAM 5 UNLOCKED.";
             } else {
-                setTimeout(
-                    () =>
-                        alert(`PROGRAM ${currentProgramId} SEQUENCE CORRECT.`),
-                    100,
-                );
+                statusMessage = `PROGRAM ${currentProgramId} SEQUENCE CORRECT.`;
             }
             isWin = true;
+
+            setTimeout(() => {
+                statusMessage = "";
+            }, 3000);
         }
     }
 
     function solvePuzzle() {
+        isSolving = true;
         cartridges = cartridges.map((c) => ({
             ...c,
             location: c.id,
@@ -257,9 +291,13 @@
                 });
             audioEngine.updateSequence(sequence);
         }
+        setTimeout(() => {
+            isSolving = false;
+        }, 500);
     }
 
     function randomizePuzzle() {
+        isSolving = true;
         // Create array of slot indices 0-15
         const slots = Array.from({ length: 16 }, (_, i) => i);
         // Shuffle slots
@@ -284,6 +322,9 @@
                 });
             audioEngine.updateSequence(sequence);
         }
+        setTimeout(() => {
+            isSolving = false;
+        }, 500);
     }
 
     $: shelfCartridges = cartridges.filter((c) => c.location === "shelf");
@@ -292,64 +333,78 @@
 <svelte:window on:click={handleGlobalClick} />
 
 <div class="terminal-container">
-    <div class="scanlines"></div>
-    <div class="vignette"></div>
+    <div class="scaled-wrapper" style="transform: scale({scale})">
+        <div
+            class="content"
+            bind:clientHeight={contentHeight}
+            bind:clientWidth={contentWidth}
+        >
+            <div class="screen-area">
+                <div class="scanlines"></div>
+                <div class="vignette"></div>
+                <header>
+                    <div class="header-top">
+                        <h1>RETRO_SEQ_v1.0</h1>
+                        <div class="status">
+                            {#if statusMessage}
+                                <span class="flash">{statusMessage}</span>
+                            {:else}
+                                STATUS: {isPlaying ? "RUNNING" : "READY"}
+                            {/if}
+                        </div>
+                    </div>
+                    <ProgramSelector
+                        currentProgram={currentProgramId}
+                        {programs}
+                        onSelect={handleProgramSelect}
+                    />
+                </header>
 
-    <div class="content">
-        <header>
-            <div class="header-top">
-                <h1>RETRO_SEQ_v1.0</h1>
-                <div class="status">
-                    STATUS: {isPlaying ? "RUNNING" : "READY"}
+                <div class="sequencer-grid">
+                    {#each Array(16) as _, i}
+                        <SequencerSlot
+                            index={i}
+                            cartridge={cartridges.find((c) => c.location === i)}
+                            isCurrent={currentStep === i}
+                            duration={currentStep === i ? currentDuration : 0}
+                            {selectedCartridgeId}
+                            onDrop={(id) => handleDropOnSlot(i, id)}
+                            onPreview={handlePreview}
+                            onHover={handleCartridgeHover}
+                            onClick={() => handleSlotClick(i)}
+                        />
+                    {/each}
                 </div>
             </div>
-            <ProgramSelector
-                currentProgram={currentProgramId}
-                {programs}
-                onSelect={handleProgramSelect}
+
+            <Shelf
+                {cartridges}
+                {selectedCartridgeId}
+                onDrop={handleDropOnShelf}
+                onPreview={handlePreview}
+                onHover={handleCartridgeHover}
+                onClick={handleShelfClick}
             />
-        </header>
 
-        <div class="sequencer-grid">
-            {#each Array(16) as _, i}
-                <SequencerSlot
-                    index={i}
-                    cartridge={cartridges.find((c) => c.location === i)}
-                    isCurrent={currentStep === i}
-                    duration={currentStep === i ? currentDuration : 0}
-                    {selectedCartridgeId}
-                    onDrop={(id) => handleDropOnSlot(i, id)}
-                    onPreview={handlePreview}
-                    onHover={handleCartridgeHover}
-                    onClick={() => handleSlotClick(i)}
-                />
-            {/each}
-        </div>
+            <div class="controls">
+                <div class="left-controls">
+                    <button class="retro-btn" on:click={togglePlay}>
+                        {isPlaying ? "[ STOP ]" : "[ PLAY ]"}
+                    </button>
+                    <button class="retro-btn debug-btn" on:click={solvePuzzle}>
+                        [ SOLVE ]
+                    </button>
+                    <button
+                        class="retro-btn debug-btn"
+                        on:click={randomizePuzzle}
+                    >
+                        [ RANDOM ]
+                    </button>
+                </div>
 
-        <Shelf
-            cartridges={shelfCartridges}
-            {selectedCartridgeId}
-            onDrop={handleDropOnShelf}
-            onPreview={handlePreview}
-            onHover={handleCartridgeHover}
-            onClick={handleShelfClick}
-        />
-
-        <div class="controls">
-            <div class="left-controls">
-                <button class="retro-btn" on:click={togglePlay}>
-                    {isPlaying ? "[ STOP ]" : "[ PLAY ]"}
-                </button>
-                <button class="retro-btn debug-btn" on:click={solvePuzzle}>
-                    [ SOLVE ]
-                </button>
-                <button class="retro-btn debug-btn" on:click={randomizePuzzle}>
-                    [ RANDOM ]
-                </button>
-            </div>
-
-            <div class="tempo-display">
-                TEMPO: {currentProgram.tempo} BPM
+                <div class="tempo-display">
+                    TEMPO: {currentProgram.tempo} BPM
+                </div>
             </div>
         </div>
     </div>
@@ -376,7 +431,45 @@
         justify-content: center;
     }
 
+    .scaled-wrapper {
+        transform-origin: center center;
+        transition: transform 0.1s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
     /* CRT Effects */
+    .content {
+        position: relative;
+        z-index: 5;
+        width: 90%;
+        max-width: 800px;
+        background: #1a1a1a;
+        border-radius: 8px;
+        padding: 1.25rem;
+        box-shadow:
+            0 20px 50px rgba(0, 0, 0, 0.8),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        border: 1px solid #000;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    /* The "Screen" area */
+    .screen-area {
+        background: #0a0500;
+        border-radius: 3px;
+        border: 2px solid #000;
+        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+        padding: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Move CRT effects into the screen area */
     .scanlines {
         position: absolute;
         top: 0;
@@ -393,6 +486,7 @@
         background-size: 100% 4px;
         pointer-events: none;
         z-index: 10;
+        opacity: 0.5;
     }
 
     .vignette {
@@ -410,88 +504,115 @@
         z-index: 11;
     }
 
-    .content {
-        position: relative;
-        z-index: 5;
-        width: 80%;
-        max-width: 800px;
-        border: 2px solid #ffb000;
-        padding: 2rem;
-        box-shadow:
-            0 0 20px rgba(255, 176, 0, 0.2),
-            inset 0 0 20px rgba(255, 176, 0, 0.1);
-        background: rgba(20, 10, 0, 0.8);
-    }
-
     header {
-        border-bottom: 1px solid #ffb000;
-        padding-bottom: 1rem;
-        margin-bottom: 2rem;
+        border-bottom: 1px solid #332200;
+        padding-bottom: 0.75rem;
+        margin-bottom: 0.75rem;
     }
 
     .header-top {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
         text-shadow: 0 0 5px #ffb000;
     }
 
     h1 {
         margin: 0;
-        font-size: 1.5rem;
-        letter-spacing: 2px;
+        font-size: 1.1rem;
+        letter-spacing: 1.5px;
+        color: #ffb000;
     }
 
     .sequencer-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 1rem;
-        margin-bottom: 2rem;
+        gap: 0.65rem;
+        margin-bottom: 1.25rem;
+        padding: 0.75rem;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 3px;
+        border: 1px solid #332200;
     }
 
     .controls {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-top: 1px solid #ffb000;
-        padding-top: 1rem;
+        padding-top: 0.75rem;
+        background: #222;
+        padding: 0.75rem;
+        border-radius: 3px;
+        border-top: 1px solid #333;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
 
     .left-controls {
         display: flex;
-        gap: 1rem;
+        gap: 0.65rem;
     }
 
     .retro-btn {
-        background: transparent;
-        border: 1px solid #ffb000;
-        color: #ffb000;
+        background: linear-gradient(to bottom, #333, #222);
+        border: 1px solid #000;
+        color: #aaa;
         font-family: inherit;
-        font-size: 1.2rem;
-        padding: 0.5rem 1.5rem;
+        font-size: 0.85rem;
+        padding: 0.45rem 0.9rem;
         cursor: pointer;
-        text-shadow: 0 0 5px #ffb000;
+        border-radius: 3px;
+        box-shadow:
+            0 3px 0 #000,
+            0 4px 4px rgba(0, 0, 0, 0.5);
         transition: all 0.1s;
+        text-transform: uppercase;
+        font-weight: bold;
+        letter-spacing: 0.75px;
+        white-space: nowrap;
     }
 
     .retro-btn:hover {
-        background: #ffb000;
-        color: #000;
-        box-shadow: 0 0 15px #ffb000;
+        background: linear-gradient(to bottom, #444, #333);
+        color: #fff;
     }
 
     .retro-btn:active {
-        transform: scale(0.98);
+        transform: translateY(3px);
+        box-shadow:
+            0 0 0 #000,
+            inset 0 2px 4px rgba(0, 0, 0, 0.5);
     }
 
     .debug-btn {
-        opacity: 0.5;
-        font-size: 0.8rem;
-        border-style: dashed;
+        background: linear-gradient(to bottom, #2a2a2a, #1a1a1a);
+        font-size: 0.7rem;
+        padding: 0.45rem 0.75rem;
     }
 
     .tempo-display {
-        font-size: 1.2rem;
+        font-size: 1rem;
+        color: #ffb000;
         text-shadow: 0 0 5px #ffb000;
+        font-family: "Courier New", Courier, monospace;
+        background: #000;
+        padding: 0.4rem 0.75rem;
+        border-radius: 3px;
+        border: 1px solid #333;
+        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+    }
+
+    .flash {
+        animation: flash 0.5s infinite alternate;
+        color: #fff;
+        text-shadow: 0 0 10px #fff;
+    }
+
+    @keyframes flash {
+        from {
+            opacity: 1;
+        }
+        to {
+            opacity: 0.5;
+        }
     }
 </style>
