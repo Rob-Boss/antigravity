@@ -5,6 +5,7 @@
     export let src: string;
     export let alt: string = "";
     export let className: string = "";
+    export let paused: boolean = false;
 
     const dispatch = createEventDispatcher();
 
@@ -13,6 +14,7 @@
     let image: HTMLImageElement | null = null;
     let animationId: number;
     let startTime: number;
+    let animationProgress = 0; // Track progress to resume correctly
 
     // Animation config
     const duration = 1000; // ms
@@ -21,6 +23,21 @@
 
     $: if (browser && src) {
         loadImage(src);
+    }
+
+    $: if (paused) {
+        if (animationId) cancelAnimationFrame(animationId);
+    } else {
+        // Only resume if we have image/canvas and were in progress
+        // We use a non-reactive check here to avoid loops
+        resumeIfPaused();
+    }
+
+    function resumeIfPaused() {
+        if (image && canvas && animationProgress < 1 && animationProgress > 0) {
+            startTime = performance.now() - animationProgress * duration;
+            animate();
+        }
     }
 
     function loadImage(url: string) {
@@ -39,27 +56,33 @@
                 // Extract dominant color
                 extractDominantColor(img);
 
+                animationProgress = 0;
                 startAnimation();
             }
         };
     }
 
     function extractDominantColor(img: HTMLImageElement) {
-        const tempCanvas = document.createElement("canvas");
-        tempCanvas.width = 1;
-        tempCanvas.height = 1;
-        const tempCtx = tempCanvas.getContext("2d");
-        if (tempCtx) {
-            tempCtx.drawImage(img, 0, 0, 1, 1);
-            const [r, g, b] = tempCtx.getImageData(0, 0, 1, 1).data;
-            dispatch("dominantColor", `rgb(${r}, ${g}, ${b})`);
-        }
+        // Defer to next tick to avoid blocking the main thread during animation start
+        setTimeout(() => {
+            const tempCanvas = document.createElement("canvas");
+            tempCanvas.width = 1;
+            tempCanvas.height = 1;
+            const tempCtx = tempCanvas.getContext("2d");
+            if (tempCtx) {
+                tempCtx.drawImage(img, 0, 0, 1, 1);
+                const [r, g, b] = tempCtx.getImageData(0, 0, 1, 1).data;
+                dispatch("dominantColor", `rgb(${r}, ${g}, ${b})`);
+            }
+        }, 0);
     }
 
     function startAnimation() {
         if (animationId) cancelAnimationFrame(animationId);
         startTime = performance.now();
-        animate();
+        if (!paused) {
+            animate();
+        }
     }
 
     function animate() {
@@ -68,6 +91,7 @@
         const now = performance.now();
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / duration, 1);
+        animationProgress = progress;
 
         // Easing (easeOutQuad)
         const ease = 1 - (1 - progress) * (1 - progress);
@@ -80,15 +104,34 @@
         drawPixelated(currentPixelSize);
 
         if (progress < 1) {
-            animationId = requestAnimationFrame(animate);
+            if (!paused) {
+                animationId = requestAnimationFrame(animate);
+            }
         } else {
             // Final draw to ensure sharpness
             drawPixelated(1);
         }
     }
 
+    let offscreenCanvas: HTMLCanvasElement;
+    let offscreenCtx: CanvasRenderingContext2D | null = null;
+
+    onMount(() => {
+        if (canvas) {
+            ctx = canvas.getContext("2d");
+        }
+        // Create offscreen canvas once
+        offscreenCanvas = document.createElement("canvas");
+        offscreenCtx = offscreenCanvas.getContext("2d", { alpha: false }); // Optimize for no alpha if possible
+
+        return () => {
+            if (animationId) cancelAnimationFrame(animationId);
+        };
+    });
+
     function drawPixelated(pixelSize: number) {
-        if (!ctx || !image || !canvas) return;
+        if (!ctx || !image || !canvas || !offscreenCanvas || !offscreenCtx)
+            return;
 
         // Calculate temporary dimensions
         // Ensure at least 1x1
@@ -97,36 +140,22 @@
 
         // Disable smoothing for pixel art look
         ctx.imageSmoothingEnabled = false;
+        offscreenCtx.imageSmoothingEnabled = false;
 
-        // 1. Draw image small (pixelate)
-        // We use a temporary offscreen canvas or just draw directly?
-        // Drawing directly with scaling is easier.
-
-        // Save context state
-        ctx.save();
-
-        // Clear
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Draw small
-        // We draw the image into the canvas but scaled down, then draw that scaled down version back up?
-        // Actually, the easiest way is to draw to a tiny offscreen canvas and then draw that back.
-
-        const tempCanvas = document.createElement("canvas");
-        tempCanvas.width = w;
-        tempCanvas.height = h;
-        const tempCtx = tempCanvas.getContext("2d");
-        if (!tempCtx) {
-            ctx.restore();
-            return;
+        // Resize offscreen canvas if needed (or just keep it large enough?)
+        // Resizing is expensive. Let's resize only if dimensions change.
+        if (offscreenCanvas.width !== w || offscreenCanvas.height !== h) {
+            offscreenCanvas.width = w;
+            offscreenCanvas.height = h;
         }
 
-        tempCtx.imageSmoothingEnabled = false;
-        tempCtx.drawImage(image, 0, 0, w, h);
+        // Draw small to offscreen
+        offscreenCtx.drawImage(image, 0, 0, w, h);
 
         // Draw back to main canvas scaled up
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(
-            tempCanvas,
+            offscreenCanvas,
             0,
             0,
             w,
@@ -136,18 +165,7 @@
             canvas.width,
             canvas.height,
         );
-
-        ctx.restore();
     }
-
-    onMount(() => {
-        if (canvas) {
-            ctx = canvas.getContext("2d");
-        }
-        return () => {
-            if (animationId) cancelAnimationFrame(animationId);
-        };
-    });
 </script>
 
 <canvas bind:this={canvas} class={className} aria-label={alt} role="img"

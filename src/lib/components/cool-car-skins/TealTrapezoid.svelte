@@ -1,8 +1,5 @@
 <script lang="ts">
     import { createViewerStore } from "$lib/stores/viewerStore";
-    import PixelTransition from "$lib/components/PixelTransition.svelte";
-    import { fly } from "svelte/transition";
-    import { quintOut } from "svelte/easing";
 
     const { currentIndex, images, nextImage, prevImage, selectRandomImage } =
         createViewerStore();
@@ -28,30 +25,6 @@
     const handleDominantColor = (e: CustomEvent<string>) => {
         currentBgColor = e.detail;
     };
-
-    function slideScale(
-        node: Element,
-        {
-            delay = 0,
-            duration = 1000,
-            easing = quintOut,
-            x = 0,
-            scaleStart = 1.5,
-        },
-    ) {
-        const style = getComputedStyle(node);
-        const opacity = +style.opacity;
-        const transform = style.transform === "none" ? "" : style.transform;
-
-        return {
-            delay,
-            duration,
-            easing,
-            css: (t: number, u: number) => `
-                transform: ${transform} translate(${u * x}px, 0) scale(${1 + u * (scaleStart - 1)});
-            `,
-        };
-    }
 </script>
 
 <div class="teal-trapezoid">
@@ -60,28 +33,18 @@
             class="screen-glass"
             style="background-color: {currentBgColor}; transition: background-color 1s ease;"
         >
-            {#key $currentIndex}
-                <div
-                    class="transition-wrapper"
-                    in:slideScale={{
-                        x: 360 * direction,
-                        duration: 1000,
-                        easing: quintOut,
-                        scaleStart: direction !== 0 ? 0.1 : 1,
-                    }}
-                    out:fly={{
-                        x: -360 * direction,
-                        duration: 1000,
-                        easing: quintOut,
-                    }}
-                >
-                    <PixelTransition
-                        src={images[$currentIndex]}
-                        alt="Teal Trap Car"
-                        on:dominantColor={handleDominantColor}
-                    />
-                </div>
-            {/key}
+            <div class="transition-wrapper">
+                {#key images[$currentIndex]}
+                    <div class="hologram-container" data-direction={direction}>
+                        <img
+                            src={images[$currentIndex]}
+                            alt="Teal Trap Car"
+                            class="simple-car-image"
+                        />
+                        <div class="scan-line"></div>
+                    </div>
+                {/key}
+            </div>
             <div class="scan-overlay"></div>
         </div>
     </div>
@@ -178,6 +141,122 @@
         width: 100%;
         height: 100%;
     }
+    .simple-car-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    .hologram-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        --scan-color: #1de9b6; /* Teal Accent */
+    }
+
+    .simple-car-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        /* Initial state: Hidden (clipped) and Teal/Holographic */
+        /* Default to scanning right */
+        clip-path: inset(0 100% 0 0);
+        filter: sepia(100%) hue-rotate(130deg) saturate(300%) brightness(1.1);
+        opacity: 0.8;
+        animation: materialize-right 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    /* Scan Left Variant */
+    .hologram-container[data-direction="-1"] .simple-car-image {
+        clip-path: inset(0 0 0 100%);
+        animation: materialize-left 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    .scan-line {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--scan-color);
+        box-shadow:
+            0 0 10px var(--scan-color),
+            0 0 20px var(--scan-color);
+        opacity: 0;
+        animation: scan-right 0.6s linear forwards;
+        z-index: 10;
+    }
+
+    .hologram-container[data-direction="-1"] .scan-line {
+        left: auto;
+        right: 0;
+        animation: scan-left 0.6s linear forwards;
+    }
+
+    @keyframes materialize-right {
+        0% {
+            clip-path: inset(0 100% 0 0);
+            filter: sepia(100%) hue-rotate(130deg) saturate(300%)
+                brightness(1.1);
+            opacity: 0.8;
+        }
+        50% {
+            filter: sepia(50%) hue-rotate(130deg) saturate(200%) brightness(1);
+            opacity: 0.9;
+        }
+        100% {
+            clip-path: inset(0 0 0 0);
+            filter: none;
+            opacity: 1;
+        }
+    }
+
+    @keyframes materialize-left {
+        0% {
+            clip-path: inset(0 0 0 100%);
+            filter: sepia(100%) hue-rotate(130deg) saturate(300%)
+                brightness(1.1);
+            opacity: 0.8;
+        }
+        50% {
+            filter: sepia(50%) hue-rotate(130deg) saturate(200%) brightness(1);
+            opacity: 0.9;
+        }
+        100% {
+            clip-path: inset(0 0 0 0);
+            filter: none;
+            opacity: 1;
+        }
+    }
+
+    @keyframes scan-right {
+        0% {
+            left: 0%;
+            opacity: 1;
+        }
+        90% {
+            opacity: 1;
+        }
+        100% {
+            left: 100%;
+            opacity: 0;
+        }
+    }
+
+    @keyframes scan-left {
+        0% {
+            right: 0%;
+            opacity: 1;
+        }
+        90% {
+            opacity: 1;
+        }
+        100% {
+            right: 100%;
+            opacity: 0;
+        }
+    }
+
     .teal-trapezoid {
         display: flex;
         flex-direction: column;

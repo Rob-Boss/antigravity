@@ -7,10 +7,12 @@
     onMount(() => {
         magnetStore.initialize();
     });
+
+    export let isActive = true;
 </script>
 
 <div class="fridge-container">
-    <Canvas>
+    <Canvas renderMode={isActive ? "always" : "manual"}>
         <Scene />
     </Canvas>
 </div>

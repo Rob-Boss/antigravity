@@ -1,32 +1,49 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
+    import { onMount } from "svelte";
+
+    export let trigger: boolean | undefined = undefined;
 
     let container: HTMLElement;
     let isVisible = false;
+    let hasLoaded = false;
+
+    // React to trigger prop changes
+    $: if (trigger === true && !hasLoaded) {
+        isVisible = true;
+        hasLoaded = true;
+    }
 
     onMount(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    isVisible = entry.isIntersecting;
-                });
-            },
-            {
-                root: null, // viewport
-                rootMargin: "100px", // load a bit before it comes into view
-                threshold: 0.01,
-            },
-        );
+        // Only use observer if trigger is NOT provided (undefined)
+        if (trigger === undefined) {
+            const observer = new IntersectionObserver(
+                (entries) => {
+                    entries.forEach((entry) => {
+                        if (entry.isIntersecting && !hasLoaded) {
+                            isVisible = true;
+                            hasLoaded = true;
+                            // Once loaded, we can stop observing
+                            observer.unobserve(container);
+                        }
+                    });
+                },
+                {
+                    root: null, // viewport
+                    rootMargin: "100px", // load a bit before it comes into view
+                    threshold: 0.01,
+                },
+            );
 
-        if (container) {
-            observer.observe(container);
-        }
-
-        return () => {
             if (container) {
-                observer.unobserve(container);
+                observer.observe(container);
             }
-        };
+
+            return () => {
+                if (container) {
+                    observer.unobserve(container);
+                }
+            };
+        }
     });
 </script>
 

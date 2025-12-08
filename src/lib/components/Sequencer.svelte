@@ -13,6 +13,12 @@
     let statusMessage = "";
     let isSolving = false;
 
+    export let isActive = true;
+
+    $: if (!isActive && isPlaying) {
+        togglePlay(); // Stop if active becomes false
+    }
+
     const ICONS = [
         "█▀",
         "▓▒",

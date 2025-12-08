@@ -14,6 +14,7 @@
 <svelte:window on:click={handleInteraction} on:keydown={handleInteraction} />
 
 <svelte:head>
+	<title>Swardy Landing Page</title>
 	<link rel="icon" href={favicon} />
 </svelte:head>
 

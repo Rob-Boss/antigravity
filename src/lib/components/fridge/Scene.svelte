@@ -1,10 +1,10 @@
 <script lang="ts">
     import { T, useThrelte, useTask } from "@threlte/core";
-    import { OrbitControls, Environment, interactivity } from "@threlte/extras";
+    import { Environment, interactivity } from "@threlte/extras";
     import { magnetStore } from "$lib/stores/magnetStore";
     import FridgeModel from "./FridgeModel.svelte";
     import Magnet3D from "./Magnet3D.svelte";
-    import { Vector3, Plane, Raycaster, Vector2 } from "three";
+    import { Vector3, Plane, Raycaster, Vector2, MathUtils } from "three";
     import { playPickupSound, playDropSound } from "$lib/audio/magnetSound";
 
     interactivity();
@@ -12,25 +12,70 @@
     const { camera, renderer, scene } = useThrelte();
 
     let draggingId: string | null = null;
-    let controls: any;
+
+    // Navigation State
+    const mouse = { x: 0, y: 0 };
+    const targetCameraPos = new Vector3(0, 0, 4);
+    const currentCameraPos = new Vector3(0, 0, 4);
+
+    // Configuration
+    const START_Z = 5.0; // Starting zoom (further back)
+    const BASE_Z = 2.5; // Final zoom (close up)
+    const INTRO_DURATION = 3.0; // Seconds to zoom in
+    const PAN_X_RANGE = 2.5;
+    const PAN_Y_RANGE = 1.5;
+    const DAMPING = 0.05;
+
+    // State
+    let timeElapsed = 0;
+    let currentZ = START_Z;
+
+    useTask((delta) => {
+        // Update intro zoom
+        if (timeElapsed < INTRO_DURATION) {
+            timeElapsed += delta;
+            const t = Math.min(timeElapsed / INTRO_DURATION, 1);
+            // Ease out cubic for smooth settle
+            const ease = 1 - Math.pow(1 - t, 3);
+            currentZ = MathUtils.lerp(START_Z, BASE_Z, ease);
+        } else {
+            currentZ = BASE_Z;
+        }
+
+        // Calculate target X/Y based on mouse position (pan)
+        const targetX = mouse.x * PAN_X_RANGE;
+        const targetY = mouse.y * PAN_Y_RANGE;
+
+        targetCameraPos.set(targetX, targetY, currentZ);
+
+        // Smoothly move camera (only for pan/tilt now, Z is handled by intro)
+        // We apply damping to X/Y, but Z is already smoothed by the intro lerp
+        // However, using lerp on the whole vector is fine as long as targetZ is smooth
+        currentCameraPos.lerp(targetCameraPos, DAMPING);
+
+        if ($camera) {
+            $camera.position.copy(currentCameraPos);
+            // Look slightly towards center but mostly parallel
+            $camera.lookAt(
+                currentCameraPos.x * 0.8,
+                currentCameraPos.y * 0.8,
+                0,
+            );
+        }
+    });
 
     // Raycasting for drag
     const raycaster = new Raycaster();
     const pointer = new Vector2();
-    const fridgePlane = new Plane(new Vector3(0, 0, 1), -0.56); // Plane parallel to fridge surface, slightly offset
+    const fridgePlane = new Plane(new Vector3(0, 0, 1), -0.56);
     const intersection = new Vector3();
 
     function onDragStart(id: string) {
-        // This function is called by Magnet3D when it detects a drag start.
-        // With the new global handlePointerDown, this might be redundant for initiating drag,
-        // but it's kept for compatibility if Magnet3D still uses it.
         draggingId = id;
-        if (controls) controls.enabled = false;
     }
 
     function onDragEnd() {
         draggingId = null;
-        if (controls) controls.enabled = true;
         playDropSound();
     }
 
@@ -46,29 +91,31 @@
         const { x, y } = getRelativePointerPosition(event);
         pointer.x = x;
         pointer.y = y;
+        mouse.x = x;
+        mouse.y = y;
 
         raycaster.setFromCamera(pointer, $camera);
-
-        // Raycast against all objects in the scene
         const intersects = raycaster.intersectObjects(scene.children, true);
-
-        // Find the first object that is a magnet
         const hit = intersects.find((i) => i.object.userData.isMagnet);
 
         if (hit) {
             const id = hit.object.userData.id;
             draggingId = id;
-            if (controls) controls.enabled = false;
-            event.stopPropagation(); // Prevent other handlers
+            event.stopPropagation();
             magnetStore.bringToFront(id);
             playPickupSound();
         }
     }
 
     function handlePointerMove(event: PointerEvent) {
+        const { x, y } = getRelativePointerPosition(event);
+
+        // Update mouse position for navigation
+        mouse.x = x;
+        mouse.y = y;
+
         if (!draggingId) return;
 
-        const { x, y } = getRelativePointerPosition(event);
         pointer.x = x;
         pointer.y = y;
 
@@ -93,19 +140,7 @@
     on:pointerup={handlePointerUp}
 />
 
-<T.PerspectiveCamera makeDefault position={[0, 0, 4]} fov={50}>
-    <OrbitControls
-        bind:ref={controls}
-        enableDamping
-        dampingFactor={0.1}
-        minDistance={2}
-        maxDistance={8}
-        minAzimuthAngle={-Math.PI / 4}
-        maxAzimuthAngle={Math.PI / 4}
-        maxPolarAngle={Math.PI / 1.8}
-        minPolarAngle={Math.PI / 2.5}
-    />
-</T.PerspectiveCamera>
+<T.PerspectiveCamera makeDefault position={[0, 0, 4]} fov={50} />
 
 <T.DirectionalLight position={[5, 5, 10]} intensity={1} />
 <T.AmbientLight intensity={0.5} />

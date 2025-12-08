@@ -7,20 +7,101 @@
     import LazyLoader from "$lib/components/utils/LazyLoader.svelte";
 
     let scrollContainer: HTMLElement;
+    let currentScroll = 0;
+    let targetScroll = 0;
+    let maxScroll = 0;
+    let isDragging = false;
+    let snapTimeout: ReturnType<typeof setTimeout>;
+    let animationFrame: number;
+    let snappedIndex = 0;
+    let hasBeenVisited = [true, false, false]; // First section visited by default
+
+    // Configuration
+    const SCROLL_SPEED = 2.5;
+    const DAMPING = 0.1; // Lower = smoother/slower catchup
+    const SNAP_DELAY = 150; // ms to wait before snapping
 
     onMount(() => {
-        const handleWheel = (e: WheelEvent) => {
+        // Calculate max scroll based on content
+        const updateDimensions = () => {
             if (scrollContainer) {
-                // Map vertical scroll to horizontal scroll
-                // We use a multiplier to make it feel natural or faster
-                scrollContainer.scrollLeft += e.deltaY;
+                // Total width - viewport width
+                maxScroll = scrollContainer.scrollWidth - window.innerWidth;
             }
         };
 
-        window.addEventListener("wheel", handleWheel, { passive: true });
+        window.addEventListener("resize", updateDimensions);
+        updateDimensions();
+
+        // Animation Loop
+        let lastScroll = -1;
+        const animate = () => {
+            // Lerp current to target
+            currentScroll += (targetScroll - currentScroll) * DAMPING;
+
+            // Optimization: Only update DOM if value changed significantly
+            if (Math.abs(currentScroll - lastScroll) > 0.01) {
+                if (scrollContainer) {
+                    scrollContainer.style.transform = `translateX(${-currentScroll}px)`;
+                }
+                lastScroll = currentScroll;
+            }
+
+            animationFrame = requestAnimationFrame(animate);
+        };
+        animate();
+
+        const handleWheel = (e: WheelEvent) => {
+            // Check for pinch-zoom gesture (usually accompanied by ctrlKey)
+            if (e.ctrlKey) {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Clear any pending snap
+            clearTimeout(snapTimeout);
+
+            // Update target
+            targetScroll += e.deltaY * SCROLL_SPEED;
+
+            // Calculate strict bounds based on current snapped index
+            // Can only move to adjacent sections (prev or next)
+            const sectionWidth = window.innerWidth;
+            const minBound = Math.max(0, (snappedIndex - 1) * sectionWidth);
+            const maxBound = Math.min(
+                maxScroll,
+                (snappedIndex + 1) * sectionWidth,
+            );
+
+            // Clamp target to strict bounds
+            targetScroll = Math.max(minBound, Math.min(targetScroll, maxBound));
+
+            // Snap logic
+            snapTimeout = setTimeout(() => {
+                const sectionWidth = window.innerWidth;
+                const snapIndex = Math.round(targetScroll / sectionWidth);
+                targetScroll = snapIndex * sectionWidth;
+
+                // Update snapped state
+                snappedIndex = snapIndex;
+                hasBeenVisited[snapIndex] = true;
+            }, SNAP_DELAY);
+        };
+
+        window.addEventListener("wheel", handleWheel, {
+            capture: true,
+            passive: false,
+        });
 
         return () => {
-            window.removeEventListener("wheel", handleWheel);
+            window.removeEventListener("resize", updateDimensions);
+            window.removeEventListener("wheel", handleWheel, {
+                capture: true,
+            } as any);
+            cancelAnimationFrame(animationFrame);
+            clearTimeout(snapTimeout);
         };
     });
 </script>
@@ -28,46 +109,47 @@
 <div class="page-container">
     <header class="logo-header">
         <div class="logo-wrapper">
-            <!-- Scale down the logo to fit the 25vh header -->
-            <SwardyLogo scale={0.5} />
+            <SwardyLogo scale={0.8} />
         </div>
     </header>
 
-    <main class="scroll-track" bind:this={scrollContainer}>
-        <!-- Section 1: Fridge -->
-        <section class="experience-section">
-            <LazyLoader>
-                <div class="content-wrapper fridge-wrapper">
-                    <Fridge />
-                </div>
-            </LazyLoader>
-        </section>
+    <div class="viewport">
+        <main class="scroll-track" bind:this={scrollContainer}>
+            <!-- Section 1: Sequencer -->
+            <section class="experience-section">
+                <LazyLoader trigger={hasBeenVisited[0]}>
+                    <div class="content-wrapper sequencer-wrapper">
+                        <Sequencer isActive={snappedIndex === 0} />
+                    </div>
+                </LazyLoader>
+            </section>
 
-        <!-- Section 2: Sequencer -->
-        <section class="experience-section">
-            <LazyLoader>
-                <div class="content-wrapper sequencer-wrapper">
-                    <Sequencer />
-                </div>
-            </LazyLoader>
-        </section>
+            <!-- Section 2: Fridge -->
+            <section class="experience-section">
+                <LazyLoader trigger={hasBeenVisited[1]}>
+                    <div class="content-wrapper fridge-wrapper">
+                        <Fridge isActive={snappedIndex === 1} />
+                    </div>
+                </LazyLoader>
+            </section>
 
-        <!-- Section 3: Cool Car Viewer (Teal Trapezoid) -->
-        <section class="experience-section">
-            <LazyLoader>
-                <div class="content-wrapper car-wrapper">
-                    <TealTrapezoid />
-                </div>
-            </LazyLoader>
-        </section>
-    </main>
+            <!-- Section 3: Cool Car Viewer -->
+            <section class="experience-section">
+                <LazyLoader trigger={hasBeenVisited[2]}>
+                    <div class="content-wrapper car-wrapper">
+                        <TealTrapezoid isActive={snappedIndex === 2} />
+                    </div>
+                </LazyLoader>
+            </section>
+        </main>
+    </div>
 </div>
 
 <style>
     :global(body) {
         margin: 0;
         padding: 0;
-        overflow: hidden; /* Prevent body scroll */
+        overflow: hidden;
         background: #111;
         color: #fff;
     }
@@ -93,35 +175,32 @@
     }
 
     .logo-wrapper {
-        transform: scale(0.6); /* Adjust as needed */
+        transform: scale(0.6);
+    }
+
+    .viewport {
+        height: 75vh;
+        width: 100vw;
+        overflow: hidden; /* Hide overflow, we move track manually */
+        position: relative;
     }
 
     .scroll-track {
-        height: 75vh;
-        width: 100%;
+        height: 100%;
         display: flex;
-        overflow-x: auto; /* Allow horizontal scroll */
-        overflow-y: hidden;
-        scroll-snap-type: x mandatory; /* Snap to sections */
-        scroll-behavior: smooth;
-        /* Hide scrollbar */
-        scrollbar-width: none; /* Firefox */
-        -ms-overflow-style: none; /* IE/Edge */
-    }
-
-    .scroll-track::-webkit-scrollbar {
-        display: none; /* Chrome/Safari */
+        width: max-content; /* Fit content width */
+        will-change: transform; /* Optimize for movement */
     }
 
     .experience-section {
-        flex: 0 0 100vw; /* Each section takes full width */
+        width: 100vw; /* Exact viewport width */
         height: 100%;
-        scroll-snap-align: start;
         display: flex;
         justify-content: center;
         align-items: center;
         border-right: 1px solid #222;
         position: relative;
+        flex-shrink: 0; /* Don't shrink */
     }
 
     .content-wrapper {
