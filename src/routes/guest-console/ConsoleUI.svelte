@@ -39,13 +39,13 @@
         width: 800px;
         height: 600px;
         background-color: #000;
-        color: #ffb000;
+        color: #ff6600;
         font-family: "VT323", monospace;
         font-size: 28px;
         position: relative; /* Context for absolute positioning */
         overflow: hidden;
         /* text-shadow: 0 0 5px #ffb000; */ /* Removed shadow for sharper text? User said clean. */
-        text-shadow: 0 0 2px #ffb000;
+        text-shadow: 0 0 2px #ff6600;
         box-sizing: border-box;
     }
 
@@ -102,7 +102,7 @@
         display: inline-block;
         width: 10px;
         height: 1em;
-        background: #ffb000;
+        background: #ff6600;
         animation: blink 1s step-end infinite;
         vertical-align: text-bottom;
         margin-left: 5px;

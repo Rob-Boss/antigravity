@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { T, useThrelte } from "@threlte/core";
+    import { T, useThrelte, useTask } from "@threlte/core";
     import {
         ContactShadows,
         Float,
@@ -8,6 +8,10 @@
     } from "@threlte/extras";
     import * as THREE from "three";
     import { createEventDispatcher, onMount } from "svelte";
+    import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+    import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+    import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+    import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 
     export let screenTexture: THREE.CanvasTexture | null = null;
     export let keyboardTexture: THREE.CanvasTexture | null = null;
@@ -22,7 +26,8 @@
     export let kbCenterY = 0.5;
 
     const dispatch = createEventDispatcher();
-    const { camera, renderer } = useThrelte();
+    const { camera, renderer, scene, size, autoRender, renderStage } =
+        useThrelte();
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -85,15 +90,21 @@
                     if (!Array.isArray(mesh.material)) {
                         // Ensure we don't clone endlessly if this runs multiple times
                         if (!mesh.userData.materialCloned) {
-                            mesh.material = mesh.material.clone();
+                            mesh.material = mesh.material.clone(); // Clone original StandardMaterial
                             mesh.userData.materialCloned = true;
                         }
                         const m = mesh.material as THREE.MeshStandardMaterial;
                         m.map = screenTexture;
                         m.emissiveMap = screenTexture;
-                        m.emissive.set("#ffb000");
-                        m.emissiveIntensity = 2.0;
+                        m.emissive.set("#ff6600");
+                        m.emissiveIntensity = 4.0; // Boosted for Bloom
                         m.color.set("#ffffff");
+                        m.toneMapped = false; // Preserve HDR intensity
+
+                        // RESTORE SHINE (User Request)
+                        m.roughness = 0.2; // Shiny/Glassy
+                        m.metalness = 0.1; // Plastic/Glass
+
                         m.needsUpdate = true;
                     }
                     screenTexture.flipY = false;
@@ -112,16 +123,18 @@
         if (!Array.isArray(mesh.material)) {
             // Clone once to avoid sharing with screen if needed
             if (!mesh.userData.materialCloned) {
-                mesh.material = mesh.material.clone();
+                // SWITCH TO BASIC MATERIAL for "Separate Bloom" behavior
+                const basicMat = new THREE.MeshBasicMaterial();
+                mesh.material = basicMat;
                 mesh.userData.materialCloned = true;
             }
-            const m = mesh.material as THREE.MeshStandardMaterial;
+            const m = mesh.material as THREE.MeshBasicMaterial;
 
             m.map = keyboardTexture;
-            m.emissiveMap = keyboardTexture;
-            m.emissive.set("#ffffff");
-            m.emissiveIntensity = 2.0;
+            // BasicMaterial HDR Boost
             m.color.set("#ffffff");
+            m.color.multiplyScalar(4.0);
+            m.toneMapped = false;
 
             // VISIBILITY HACKS
             m.side = THREE.DoubleSide;
@@ -164,6 +177,53 @@
     // Final Camera Lock
     // Position: [-2.269749013915371, 2.4415972710310374, 4.832407447029052]
     // Target: [0.041087251020466585, 0.6398831827492274, -0.20973650676077182]
+
+    // --- BLOOM PROPS ---
+    // --- BLOOM PROPS ---
+    export let bloomStrength = 0.25; // Reduce by half (0.5 -> 0.25)
+    export let bloomRadius = 0.4;
+    export let bloomThreshold = 0.5; // Low threshold to ensure visibility (UI is ~4.0)
+
+    // --- SETUP BLOOM ---
+    // 1. Create Objects
+    const renderTarget = new THREE.WebGLRenderTarget(800, 600, {
+        type: THREE.HalfFloatType,
+        format: THREE.RGBAFormat,
+    });
+    // Resize handler will check this? Actually Composer handles internal target usually,
+    // but providing one ensures settings.
+    const composer = new EffectComposer(renderer, renderTarget);
+    const renderPass = new RenderPass(scene, $camera); // Initialize with current (default) camera
+    const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2($size.width, $size.height),
+        bloomStrength,
+        bloomRadius,
+        bloomThreshold,
+    );
+    const outputPass = new OutputPass();
+
+    // 2. Add Passes
+    composer.addPass(renderPass);
+    composer.addPass(bloomPass);
+    composer.addPass(outputPass);
+
+    // 3. Reactivity
+    $: renderPass.camera = $camera; // CRITICAL: Update camera when OrbitControls/Camera changes!
+    $: bloomPass.strength = bloomStrength;
+    $: bloomPass.radius = bloomRadius;
+    $: bloomPass.threshold = bloomThreshold;
+    $: composer.setSize($size.width, $size.height);
+
+    // 4. Disable Auto Render
+    autoRender.set(false);
+
+    // 5. Render Loop
+    useTask(
+        (delta) => {
+            composer.render();
+        },
+        { stage: renderStage, autoInvalidate: false },
+    );
 
     onMount(() => {
         window.addEventListener("click", handleClick);

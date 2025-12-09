@@ -88,9 +88,9 @@
         ctx.fillRect(0, 0, 800, 200);
 
         // CONFIG
-        const activeColor = "#ffb000"; // Orange
+        const activeColor = "#ff6600"; // Saturated Orange
         const inactiveColor = "#443300"; // Dim Orange
-        const textColor = "#ffb000";
+        const textColor = "#ff6600";
         const labelFont = "bold 20px Arial";
         const valueFont = "32px Arial";
         const msgFont = "24px Arial"; // Smaller for message
@@ -200,6 +200,8 @@
     };
 
     // --- TUNING ---
+    // (Sliders removed per user request)
+
     let kbOffsetX = 0;
     let kbOffsetY = 0;
     let kbRepeatX = 1;
