@@ -8,12 +8,12 @@
     let currentBgColor = "#004d40";
 
     const handleNext = () => {
-        direction = 1;
+        direction = -1;
         nextImage();
     };
 
     const handlePrev = () => {
-        direction = -1;
+        direction = 1;
         prevImage();
     };
 

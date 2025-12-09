@@ -123,6 +123,9 @@
             if (audioEngine) {
                 audioEngine.stop();
             }
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
         };
     });
 
@@ -187,6 +190,11 @@
             audioEngine.stop();
             isPlaying = false;
             currentStep = -1;
+
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = undefined;
+            }
         } else {
             const sequence = Array(16)
                 .fill(null)
@@ -197,16 +205,30 @@
                     };
                 });
 
-            audioEngine.start(
-                sequence,
-                currentProgram.tempo,
-                (step, duration) => {
-                    currentStep = step;
-                    currentDuration = duration;
-                },
-            );
+            audioEngine.start(sequence, currentProgram.tempo);
             isPlaying = true;
+
+            // Start Visual Loop
+            startVisualLoop();
         }
+    }
+
+    let animationFrameId: number | undefined;
+
+    function startVisualLoop() {
+        const loop = () => {
+            if (!isPlaying) return;
+
+            const { step, duration } = audioEngine.getCurrentStep();
+
+            if (step !== currentStep) {
+                currentStep = step;
+                currentDuration = duration;
+            }
+
+            animationFrameId = requestAnimationFrame(loop);
+        };
+        animationFrameId = requestAnimationFrame(loop);
     }
 
     function handleDropOnSlot(slotIndex: number, cartridgeId: number) {

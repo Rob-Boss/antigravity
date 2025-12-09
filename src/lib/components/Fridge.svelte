@@ -9,10 +9,15 @@
     });
 
     export let isActive = true;
+
+    const { draggingMagnet } = magnetStore;
 </script>
 
-<div class="fridge-container">
-    <Canvas renderMode={isActive ? "always" : "manual"}>
+<div
+    class="fridge-container"
+    style:cursor={$draggingMagnet ? "grabbing" : "grab"}
+>
+    <Canvas renderMode="always">
         <Scene />
     </Canvas>
 </div>

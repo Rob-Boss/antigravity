@@ -1,18 +1,27 @@
+import SchedulerWorker from './scheduler.worker.ts?worker';
+
 export class AudioEngine {
     private ctx: AudioContext | null = null;
     private isPlaying: boolean = false;
     private currentStep: number = 0;
     private nextNoteTime: number = 0;
-    private timerID: number | undefined;
     private lookahead: number = 25.0; // How frequently to call scheduling function (in milliseconds)
     private scheduleAheadTime: number = 0.1; // How far ahead to schedule audio (sec)
     private sequence: any[] = [];
     private tempo: number = 120;
     private onStepCallback: ((step: number, duration: number) => void) | null = null;
+    private worker: Worker | null = null;
 
     constructor() {
-        // We initialize the context lazily on first user interaction usually, 
-        // but here we'll prepare it.
+        // Initialize worker
+        if (typeof Worker !== 'undefined') {
+            this.worker = new SchedulerWorker();
+            this.worker.onmessage = (e) => {
+                if (e.data === "tick") {
+                    this.scheduler();
+                }
+            };
+        }
     }
 
     private initContext() {
@@ -28,15 +37,16 @@ export class AudioEngine {
         this.initContext();
     }
 
-    public start(sequence: any[], tempo: number, onStep: (step: number, duration: number) => void) {
+    public start(sequence: any[], tempo: number) {
         this.initContext();
         this.sequence = sequence;
         this.tempo = tempo;
-        this.onStepCallback = onStep;
         this.isPlaying = true;
         this.currentStep = 0;
         this.nextNoteTime = this.ctx!.currentTime;
-        this.scheduler();
+
+        // Start the worker
+        this.worker?.postMessage("start");
     }
 
     public updateSequence(sequence: any[]) {
@@ -45,9 +55,7 @@ export class AudioEngine {
 
     public stop() {
         this.isPlaying = false;
-        if (this.timerID) {
-            window.clearTimeout(this.timerID);
-        }
+        this.worker?.postMessage("stop");
     }
 
     private nextNote() {
@@ -190,20 +198,40 @@ export class AudioEngine {
         return 440;
     }
 
+    private scheduledEvents: { step: number; time: number; duration: number }[] = [];
+
+    public getCurrentStep(): { step: number; duration: number } {
+        if (!this.ctx || !this.isPlaying) return { step: -1, duration: 0 };
+        const currentTime = this.ctx.currentTime;
+
+        // Find the latest event that has started
+        // Since events are ordered, we can iterate backwards or just find the last one <= currentTime
+        // Also cleanup old events
+
+        // Remove events older than 1 second (arbitrary buffer) to keep array small
+        while (this.scheduledEvents.length > 0 && this.scheduledEvents[0].time < currentTime - 1.0) {
+            this.scheduledEvents.shift();
+        }
+
+        // Find current step
+        // We look for the event that started most recently
+        let activeStep = -1;
+        let activeDuration = 0;
+
+        for (let i = 0; i < this.scheduledEvents.length; i++) {
+            if (this.scheduledEvents[i].time <= currentTime) {
+                activeStep = this.scheduledEvents[i].step;
+                activeDuration = this.scheduledEvents[i].duration;
+            } else {
+                // Future events
+                break;
+            }
+        }
+
+        return { step: activeStep, duration: activeDuration };
+    }
+
     private scheduleNote(stepNumber: number, time: number) {
-        // Notify UI
-        // We use a slight delay or requestAnimationFrame in the UI to sync visuals
-        // But for now, we'll just callback. Note: this callback runs early (at scheduling time), 
-        // so visuals might be slightly ahead of audio. 
-        // For tight sync, we'd use the Draw loop to check AudioContext.currentTime.
-        // We'll do a simple "approximate" callback here for the prototype.
-
-        // Actually, to make the UI update at the right time, we should use the main loop in +page.svelte
-        // checking against this.nextNoteTime. 
-        // But let's try to be helpful and provide a "Draw" callback v	private scheduleNote(stepNumber: number, time: number) {
-        // Notify UI
-        const timeToPlay = time - this.ctx!.currentTime;
-
         let duration = 60.0 / this.tempo;
         const step = this.sequence[stepNumber];
         if (step && step.cartridgeId !== null) {
@@ -215,11 +243,14 @@ export class AudioEngine {
             }
         }
 
-        setTimeout(() => {
-            if (this.onStepCallback && this.isPlaying) {
-                this.onStepCallback(stepNumber, duration);
-            }
-        }, timeToPlay * 1000);
+        // Track for UI polling
+        this.scheduledEvents.push({
+            step: stepNumber,
+            time: time,
+            duration: duration
+        });
+
+        // Callback removed - UI now polls getCurrentStep()
 
         if (step && step.cartridgeId !== null) {
             if (this.currentProgramId === 1 && this.sampleBuffers.has(step.cartridgeId)) {
@@ -230,10 +261,6 @@ export class AudioEngine {
         }
     }
 
-    private playOscillator(time: number, freq: number) {
-        // Legacy method, replaced by playSynth logic inside scheduleNote
-    }
-
     private scheduler() {
         // while there are notes that will need to play before the next interval, 
         // schedule them and advance the pointer.
@@ -241,9 +268,6 @@ export class AudioEngine {
             this.scheduleNote(this.currentStep, this.nextNoteTime);
             this.nextNote();
         }
-
-        if (this.isPlaying) {
-            this.timerID = window.setTimeout(() => this.scheduler(), this.lookahead);
-        }
+        // Worker handles the loop
     }
 }

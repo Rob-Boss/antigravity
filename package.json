@@ -24,6 +24,7 @@
 		"@threlte/core": "^8.3.0",
 		"@threlte/extras": "^9.7.1",
 		"@types/three": "^0.181.0",
+		"html-to-image": "^1.11.13",
 		"svelte-tweakpane-ui": "^1.5.12",
 		"three": "^0.181.2"
 	}

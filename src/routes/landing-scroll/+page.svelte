@@ -35,23 +35,49 @@
 
         // Animation Loop
         let lastScroll = -1;
-        const animate = () => {
-            // Lerp current to target
-            currentScroll += (targetScroll - currentScroll) * DAMPING;
+        let isRunning = false;
 
-            // Optimization: Only update DOM if value changed significantly
-            if (Math.abs(currentScroll - lastScroll) > 0.01) {
-                if (scrollContainer) {
-                    scrollContainer.style.transform = `translateX(${-currentScroll}px)`;
-                }
-                lastScroll = currentScroll;
+        const startAnimation = () => {
+            if (!isRunning) {
+                isRunning = true;
+                animate();
             }
-
-            animationFrame = requestAnimationFrame(animate);
         };
-        animate();
+
+        const animate = () => {
+            try {
+                // Lerp current to target
+                currentScroll += (targetScroll - currentScroll) * DAMPING;
+
+                // Optimization: Only update DOM if value changed significantly
+                if (Math.abs(currentScroll - lastScroll) > 0.01) {
+                    if (scrollContainer) {
+                        scrollContainer.style.transform = `translateX(${-currentScroll}px)`;
+                    }
+                    lastScroll = currentScroll;
+                } else if (Math.abs(targetScroll - currentScroll) < 0.1) {
+                    // If we are close to target AND haven't moved much, sleep
+                    isRunning = false;
+                    return;
+                }
+
+                animationFrame = requestAnimationFrame(animate);
+            } catch (e) {
+                console.error("Scroll animation error:", e);
+                isRunning = false; // Reset state so loop can be restarted
+            }
+        };
+        startAnimation();
+
+        window.addEventListener("resize", () => {
+            updateDimensions();
+            startAnimation();
+        });
+        updateDimensions();
 
         const handleWheel = (e: WheelEvent) => {
+            startAnimation();
+
             // Check for pinch-zoom gesture (usually accompanied by ctrlKey)
             if (e.ctrlKey) {
                 return;
@@ -87,6 +113,9 @@
                 // Update snapped state
                 snappedIndex = snapIndex;
                 hasBeenVisited[snapIndex] = true;
+
+                // Wake up animation to scroll to the snapped position
+                startAnimation();
             }, SNAP_DELAY);
         };
 
