@@ -45,7 +45,7 @@
 
     let nameDraft = "";
     let messageDraft = "";
-    let activeField: "name" | "message" | null = null;
+    let activeField: "name" | "message" | null = "name"; // Default to name on load
     let selectionCount = 0; // Number of characters selected from the END
 
     // --- RASTERIZATION ---
@@ -326,7 +326,7 @@
         ];
         nameDraft = "";
         messageDraft = "";
-        activeField = null;
+        activeField = "name"; // Auto-select name field after submit
         updateScreen();
         updateKeyboard();
     };
@@ -476,14 +476,31 @@
         if (changed) updateKeyboard();
     };
 
+    let isHovering = false; // Track hover state for scroll locking
+
     const handleWheel = (e: WheelEvent) => {
-        // Scroll Logic for Mouse Wheel
-        // Use deltaY directly to respect user's system scrolling preference (Natural vs Standard)
-        // deltaY > 0 (Scroll Down) -> Reduce Offset -> Move content UP (towards recent)
-        // deltaY < 0 (Scroll Up) -> Increase Offset -> Move content DOWN (towards history)
-        // USER REQUESTED INVERSION: Using '+' instead of '-'
-        scrollOffset = Math.max(0, scrollOffset + e.deltaY);
-        updateScreen();
+        // Only hijack scroll if hovering the console area
+        if (!isHovering) return;
+
+        if (!activeField && scrollOffset === 0 && e.deltaY > 0) return; // Allow natural scroll if idle?
+        // Actually, if we are hovering and want to limit scroll, we should probably trap it?
+        // But if we are at top/bottom, maybe let it bubble?
+        // User request: "limit the scroll function to only when you're hovering"
+        // Meaning: If hovering, scroll text. If not hovering, scroll page.
+        // My logic `if (!isHovering) return` achieves exactly this.
+        // If not hovering -> return -> browser default -> page scroll.
+        // If hovering -> run logic -> e.preventDefault() -> text scroll.
+
+        // ... existing logic ...
+        const scrollAmount = e.deltaY;
+        // Invert direction per user pref?
+        // Logic below: scrollOffset = Math.max(0, scrollOffset + e.deltaY);
+
+        if (activeField || scrollOffset > 0 || e.deltaY < 0) {
+            e.preventDefault(); // Stop page scroll
+            scrollOffset = Math.max(0, scrollOffset + e.deltaY);
+            updateScreen();
+        }
     };
 
     onMount(() => {
@@ -506,7 +523,12 @@
     });
 </script>
 
-<div class="container">
+<div
+    class="container"
+    role="presentation"
+    on:mouseenter={() => (isHovering = true)}
+    on:mouseleave={() => (isHovering = false)}
+>
     <Canvas>
         <Scene
             {screenTexture}
@@ -519,6 +541,7 @@
             {kbCenterX}
             {kbCenterY}
             on:keyboardClick={handleKeyboardClick}
+            on:hover={(e) => (isHovering = e.detail)}
         />
     </Canvas>
 </div>

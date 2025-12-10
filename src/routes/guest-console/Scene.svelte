@@ -33,21 +33,28 @@
     const pointer = new THREE.Vector2();
 
     let keyboardMesh: THREE.Mesh | null = null;
+    let isHovered = false;
 
     const gltf = useGltf("/media/green_console_5.glb");
 
-    // Handle Click
-    const handleClick = (event: MouseEvent) => {
-        if (!keyboardMesh || !$camera) return;
+    // --- MANUAL INPUT HANDLING ---
 
-        // Calculate pointer position in normalized device coordinates (-1 to +1)
+    const updatePointer = (event: MouseEvent) => {
         const canvas = renderer.domElement;
         const rect = canvas.getBoundingClientRect();
         pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+        updatePointer(event);
+    };
+
+    const handleClick = (event: MouseEvent) => {
+        if (!keyboardMesh || !$camera) return;
+        updatePointer(event); // Ensure precise pos
 
         raycaster.setFromCamera(pointer, $camera);
-
         const intersects = raycaster.intersectObject(keyboardMesh);
 
         if (intersects.length > 0) {
@@ -59,17 +66,15 @@
         }
     };
 
-    // 1. Find Meshes Once
+    // 1. Find Meshes
     $: if ($gltf) {
         $gltf.scene.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
                 const mesh = child as THREE.Mesh;
 
                 // --- AUTO SMOOTHING (Requested by User) ---
-                // Re-calculating normals makes low-poly faceted curves look smooth.
                 mesh.geometry.computeVertexNormals();
                 if (mesh.material && !Array.isArray(mesh.material)) {
-                    // Ensure the material isn't forcing flat shading
                     (mesh.material as THREE.MeshStandardMaterial).flatShading =
                         false;
                     mesh.material.needsUpdate = true;
@@ -81,30 +86,21 @@
                     keyboardMesh = mesh;
                 }
 
-                // ... (rest of logic) ...
-
-                // Screen is handled inline usually, but let's keep it simple or refactor similarly if needed.
-                // For now, focusing on fixing Keyboard.
                 if (mesh.name === "screen" && screenTexture) {
-                    // (Existing Screen Logic kept inline for minimal disruption, though could be refactored too)
                     if (!Array.isArray(mesh.material)) {
-                        // Ensure we don't clone endlessly if this runs multiple times
                         if (!mesh.userData.materialCloned) {
-                            mesh.material = mesh.material.clone(); // Clone original StandardMaterial
+                            mesh.material = mesh.material.clone();
                             mesh.userData.materialCloned = true;
                         }
                         const m = mesh.material as THREE.MeshStandardMaterial;
                         m.map = screenTexture;
                         m.emissiveMap = screenTexture;
                         m.emissive.set("#ff6600");
-                        m.emissiveIntensity = 4.0; // Boosted for Bloom
+                        m.emissiveIntensity = 4.0;
                         m.color.set("#ffffff");
-                        m.toneMapped = false; // Preserve HDR intensity
-
-                        // RESTORE SHINE (User Request)
-                        m.roughness = 0.2; // Shiny/Glassy
-                        m.metalness = 0.1; // Plastic/Glass
-
+                        m.toneMapped = false;
+                        m.roughness = 0.2;
+                        m.metalness = 0.1;
                         m.needsUpdate = true;
                     }
                     screenTexture.flipY = false;
@@ -115,85 +111,52 @@
         });
     }
 
-    // 2. Apply Keyboard Texture Material (Once per unique texture)
+    // 2. Apply Keyboard Texture
     $: if (keyboardMesh && keyboardTexture) {
-        console.log("Applying Real Keyboard Texture to Mesh");
         const mesh = keyboardMesh;
-
         if (!Array.isArray(mesh.material)) {
-            // Clone once to avoid sharing with screen if needed
             if (!mesh.userData.materialCloned) {
-                // SWITCH TO BASIC MATERIAL for "Separate Bloom" behavior
                 const basicMat = new THREE.MeshBasicMaterial();
                 mesh.material = basicMat;
                 mesh.userData.materialCloned = true;
             }
             const m = mesh.material as THREE.MeshBasicMaterial;
-
             m.map = keyboardTexture;
-            // BasicMaterial HDR Boost
             m.color.set("#ffffff");
             m.color.multiplyScalar(4.0);
             m.toneMapped = false;
-
-            // VISIBILITY HACKS
             m.side = THREE.DoubleSide;
-            // m.depthTest = false; // Careful, might show through everything
-
             m.needsUpdate = true;
         }
-
         keyboardTexture.flipY = false;
         keyboardTexture.colorSpace = THREE.SRGBColorSpace;
-
-        // CRITICAL: Enable Wrapping so sliders don't just smear the edge pixels
         keyboardTexture.wrapS = THREE.RepeatWrapping;
         keyboardTexture.wrapT = THREE.RepeatWrapping;
-
         keyboardTexture.needsUpdate = true;
     }
 
-    // 3. Apply Tuning Transforms (Runs on Slider Change)
+    // 3. Apply Tuning Transforms
     $: if (keyboardTexture) {
-        console.log("Updating Texture Transforms", {
-            kbOffsetX,
-            kbOffsetY,
-            kbRepeatX,
-            kbRepeatY,
-            kbRotation,
-        });
         keyboardTexture.flipY = false;
         keyboardTexture.colorSpace = THREE.SRGBColorSpace;
-
-        // Tuning Application
         keyboardTexture.center.set(kbCenterX, kbCenterY);
         keyboardTexture.rotation = kbRotation;
         keyboardTexture.offset.set(kbOffsetX, kbOffsetY);
         keyboardTexture.repeat.set(kbRepeatX, kbRepeatY);
-
         keyboardTexture.needsUpdate = true;
     }
 
-    // Final Camera Lock
-    // Position: [-2.269749013915371, 2.4415972710310374, 4.832407447029052]
-    // Target: [0.041087251020466585, 0.6398831827492274, -0.20973650676077182]
-
-    // --- BLOOM PROPS ---
-    // --- BLOOM PROPS ---
-    export let bloomStrength = 0.25; // Reduce by half (0.5 -> 0.25)
+    // --- BLOOM SETUP ---
+    export let bloomStrength = 0.25;
     export let bloomRadius = 0.4;
-    export let bloomThreshold = 0.5; // Low threshold to ensure visibility (UI is ~4.0)
+    export let bloomThreshold = 0.5;
 
-    // --- SETUP BLOOM ---
-    // 1. Create Objects
     const renderTarget = new THREE.WebGLRenderTarget(800, 600, {
         type: THREE.HalfFloatType,
         format: THREE.RGBAFormat,
     });
-    // Resize handler will check this? Actually Composer handles internal target usually,
-    // but providing one ensures settings.
     const composer = new EffectComposer(renderer, renderTarget);
-    const renderPass = new RenderPass(scene, $camera); // Initialize with current (default) camera
+    const renderPass = new RenderPass(scene, $camera);
     const bloomPass = new UnrealBloomPass(
         new THREE.Vector2($size.width, $size.height),
         bloomStrength,
@@ -202,36 +165,70 @@
     );
     const outputPass = new OutputPass();
 
-    // 2. Add Passes
     composer.addPass(renderPass);
     composer.addPass(bloomPass);
     composer.addPass(outputPass);
 
-    // 3. Reactivity
-    $: renderPass.camera = $camera; // CRITICAL: Update camera when OrbitControls/Camera changes!
+    $: renderPass.camera = $camera;
     $: bloomPass.strength = bloomStrength;
     $: bloomPass.radius = bloomRadius;
     $: bloomPass.threshold = bloomThreshold;
     $: composer.setSize($size.width, $size.height);
 
-    // 4. Disable Auto Render
     autoRender.set(false);
 
-    // 5. Render Loop
+    // RENDER LOOP & HOVER CHECK
     useTask(
         (delta) => {
+            // Render Bloom
             composer.render();
+
+            // Check Hover (Manual Raycast)
+            if (keyboardMesh && $camera) {
+                raycaster.setFromCamera(pointer, $camera);
+                // Intersect keyboard OR screen (if we want robust console hover)
+                // For now, hovering the keyboard mesh is the main trigger.
+                // Maybe check all meshes in scene? Or just the main group?
+                // Let's check keyboardMesh for now as it covers most of the interaction area.
+                // Actually, the console body is usually separate.
+                // If the user wants "hovering the console", we should probably raycast against the whole scene or specific meshes.
+                // Since `keyboardMesh` is just the keys/panel, if they hover the CRT casing, it might stop scrolling.
+                // Let's raycast against the gltf.scene if possible?
+                // Raycasting whole scene every frame might be expensive-ish but for this low poly model it's fine.
+
+                // However, simpler is better: intersect keyboardMesh is what we care about for *input*.
+                // But for *scrolling*, likely the whole console.
+                // Let's try to intersect the whole `gltf.scene` children?
+
+                let hit = false;
+                if ($gltf && $gltf.scene) {
+                    const intersects = raycaster.intersectObject(
+                        $gltf.scene,
+                        true,
+                    ); // true = recursive
+                    hit = intersects.length > 0;
+                }
+
+                if (hit !== isHovered) {
+                    isHovered = hit;
+                    dispatch("hover", isHovered);
+                    // console.log("Hover State Change:", isHovered);
+                }
+            }
         },
         { stage: renderStage, autoInvalidate: false },
     );
 
     onMount(() => {
         window.addEventListener("click", handleClick);
-        return () => window.removeEventListener("click", handleClick);
+        window.addEventListener("mousemove", handleMouseMove);
+        return () => {
+            window.removeEventListener("click", handleClick);
+            window.removeEventListener("mousemove", handleMouseMove);
+        };
     });
 </script>
 
-<!-- Camera Locked -->
 <T.PerspectiveCamera
     makeDefault
     position={[-2.269749013915371, 2.4415972710310374, 4.832407447029052]}
