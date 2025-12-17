@@ -175,9 +175,8 @@
     $: bloomPass.threshold = bloomThreshold;
     $: composer.setSize($size.width, $size.height);
 
-    // MATCH BACKGROUND COLOR (#111111)
-    // We cannot use transparency with EffectComposer easily, so we match the global BG.
-    renderer.setClearColor(0x111111, 1);
+    // MATCH BACKGROUND COLOR (approx #4b4b4b after ACES Tone Mapping)
+    renderer.setClearColor(0x080808, 1);
 
     autoRender.set(false);
 
