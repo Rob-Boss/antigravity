@@ -357,7 +357,7 @@
     .cabinet {
         position: absolute;
         background: #222;
-        border: 1px solid #111;
+        /* border removed */
     }
 
     .face-front {
@@ -375,21 +375,21 @@
         width: 300px;
         height: 500px;
         transform: translateZ(-100px) rotateY(180deg);
-        background: #3a3a3a;
+        background: #4b4b4b;
     }
 
     .face-right {
         width: 200px;
         height: 500px;
         transform: rotateY(90deg) translateZ(150px);
-        background: #3a3a3a;
+        background: #4b4b4b;
     }
 
     .face-left {
         width: 200px;
         height: 500px;
         transform: rotateY(-90deg) translateZ(150px);
-        background: #3a3a3a;
+        background: #4b4b4b;
     }
 
     .face-top {
