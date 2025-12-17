@@ -154,7 +154,7 @@
         height: 25vh;
         width: 100%;
         background: #4b4b4b;
-        border-bottom: 1px solid #333;
+        /* border-bottom: 1px solid #333; REMOVED */
         z-index: 20;
         display: flex;
         justify-content: center;
