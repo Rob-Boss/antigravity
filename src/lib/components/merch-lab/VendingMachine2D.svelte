@@ -280,7 +280,6 @@
                         class:animating={isAnimating}
                         bind:this={elevatorEl}
                     >
-                        <div class="arm-joint"></div>
                         <div class="platform-surface"></div>
                     </div>
                 </div>

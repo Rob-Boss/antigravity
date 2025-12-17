@@ -22,6 +22,9 @@
     let isNavigating = false;
     let showLoader = true;
     let direction = 1;
+    let innerWidth = 1000;
+
+    $: logoScale = Math.max(0.3, Math.min(0.8, innerWidth / 1200));
 
     // Handle Entry Animation on Mount
     onMount(async () => {
@@ -66,12 +69,16 @@
     };
 </script>
 
-<svelte:window on:wheel|nonpassive={handleWheel} on:keydown={handleKey} />
+<svelte:window
+    on:wheel|nonpassive={handleWheel}
+    on:keydown={handleKey}
+    bind:innerWidth
+/>
 
 <div class="page-container">
     <header class="logo-header">
         <div class="logo-wrapper">
-            <SwardyLogo scale={0.8} />
+            <SwardyLogo scale={logoScale} />
         </div>
     </header>
 
@@ -156,7 +163,9 @@
     }
 
     .logo-wrapper {
-        transform: scale(0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
     .viewport {
