@@ -146,46 +146,46 @@
         keyboardTexture.needsUpdate = true;
     }
 
-    // --- BLOOM SETUP (DISABLED for Transparency) ---
-    // export let bloomStrength = 0.25;
-    // export let bloomRadius = 0.4;
-    // export let bloomThreshold = 0.5;
+    // --- BLOOM SETUP ---
+    export let bloomStrength = 0.25;
+    export let bloomRadius = 0.4;
+    export let bloomThreshold = 0.5;
 
-    // const renderTarget = new THREE.WebGLRenderTarget(800, 600, {
-    //     type: THREE.HalfFloatType,
-    //     format: THREE.RGBAFormat,
-    // });
-    // const composer = new EffectComposer(renderer, renderTarget);
-    // const renderPass = new RenderPass(scene, $camera);
-    // const bloomPass = new UnrealBloomPass(
-    //     new THREE.Vector2($size.width, $size.height),
-    //     bloomStrength,
-    //     bloomRadius,
-    //     bloomThreshold,
-    // );
-    // const outputPass = new OutputPass();
+    const renderTarget = new THREE.WebGLRenderTarget(800, 600, {
+        type: THREE.HalfFloatType,
+        format: THREE.RGBAFormat,
+    });
+    const composer = new EffectComposer(renderer, renderTarget);
+    const renderPass = new RenderPass(scene, $camera);
+    const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2($size.width, $size.height),
+        bloomStrength,
+        bloomRadius,
+        bloomThreshold,
+    );
+    const outputPass = new OutputPass();
 
-    // composer.addPass(renderPass);
-    // composer.addPass(bloomPass);
-    // composer.addPass(outputPass);
+    composer.addPass(renderPass);
+    composer.addPass(bloomPass);
+    composer.addPass(outputPass);
 
-    // $: renderPass.camera = $camera;
-    // $: bloomPass.strength = bloomStrength;
-    // $: bloomPass.radius = bloomRadius;
-    // $: bloomPass.threshold = bloomThreshold;
-    // $: composer.setSize($size.width, $size.height);
+    $: renderPass.camera = $camera;
+    $: bloomPass.strength = bloomStrength;
+    $: bloomPass.radius = bloomRadius;
+    $: bloomPass.threshold = bloomThreshold;
+    $: composer.setSize($size.width, $size.height);
 
-    // Force transparent background
-    renderer.setClearColor(0x000000, 0);
+    // MATCH BACKGROUND COLOR (#111111)
+    // We cannot use transparency with EffectComposer easily, so we match the global BG.
+    renderer.setClearColor(0x111111, 1);
 
-    // Re-enable autoRender (Standard rendering is transparent by default)
-    autoRender.set(true);
+    autoRender.set(false);
 
     // RENDER LOOP & HOVER CHECK
     useTask(
         (delta) => {
             // Render Bloom
-            // composer.render();
+            composer.render();
 
             // Check Hover (Manual Raycast)
             if (keyboardMesh && $camera) {
