@@ -364,7 +364,7 @@
         width: 300px;
         height: 500px;
         transform: translateZ(100px);
-        background: #1a1a1a;
+        background: #4b4b4b;
         display: flex;
         flex-direction: column;
         padding: 20px;
@@ -375,28 +375,28 @@
         width: 300px;
         height: 500px;
         transform: translateZ(-100px) rotateY(180deg);
-        background: #111;
+        background: #3a3a3a;
     }
 
     .face-right {
         width: 200px;
         height: 500px;
         transform: rotateY(90deg) translateZ(150px);
-        background: #0d0d0d;
+        background: #3a3a3a;
     }
 
     .face-left {
         width: 200px;
         height: 500px;
         transform: rotateY(-90deg) translateZ(150px);
-        background: #0d0d0d;
+        background: #3a3a3a;
     }
 
     .face-top {
         width: 300px;
         height: 200px;
         transform: rotateX(90deg) translateZ(100px);
-        background: #111;
+        background: #4b4b4b;
     }
 
     .face-bottom {
@@ -713,7 +713,7 @@
         right: -100px; /* Slightly wider panel */
         top: 40px;
         width: 90px;
-        background: #111;
+        background: #4b4b4b;
         padding: 15px 10px;
         border: 2px solid #444;
         border-radius: 4px;
