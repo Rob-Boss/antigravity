@@ -74,10 +74,14 @@
         };
         startAnimation();
 
-        const handleWheel = (e: WheelEvent) => {
-            startAnimation();
+        // State for Gesture Lock
+        let isScrolling = false;
+        let gestureOriginIndex = 0;
 
-            // Check for pinch-zoom gesture
+        const handleWheel = (e: WheelEvent) => {
+            startAnimation(); // Wake up loop
+
+            // Check for pinch-zoom gesture (system)
             if (e.ctrlKey) return;
 
             e.preventDefault();
@@ -86,32 +90,38 @@
             // Clear any pending snap
             clearTimeout(snapTimeout);
 
-            // Update target
+            // GESTURE START DETECTION
+            // If we weren't just scrolling, this is the start of a new gesture
+            if (!isScrolling) {
+                isScrolling = true;
+                gestureOriginIndex = snappedIndex; // Anchor to where we started
+            }
+
+            // Update target with delta
             targetScroll += e.deltaY * SCROLL_SPEED;
 
-            // Simplified Bounds: Allow free scrolling between 0 and maxScroll
-            // This prevents "stuck" states caused by strict adjacent section clamping
-            // targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+            // GLOBAL BOUNDS (Absolute safety)
+            targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
 
-            // Constrain to adjacent sections relative to the currently snapped section
-            // This implements "One Scene at a Time" scrolling
+            // GESTURE CLAPMING (One Scene at a Time)
+            // Limit targetScroll to be within adjacent neighbors of the ORIGIN of this gesture.
+            // This prevents flinging past neighbor + 1.
             const sectionWidth = window.innerWidth;
-            const minBound = Math.max(0, (snappedIndex - 1) * sectionWidth);
+            const minBound = Math.max(
+                0,
+                (gestureOriginIndex - 1) * sectionWidth,
+            );
             const maxBound = Math.min(
                 maxScroll,
-                (snappedIndex + 1) * sectionWidth,
+                (gestureOriginIndex + 1) * sectionWidth,
             );
 
-            const oldTarget = targetScroll;
             targetScroll = Math.max(minBound, Math.min(targetScroll, maxBound));
 
-            // DEBUG LOGS
-            console.log(
-                `Wheel: delta=${e.deltaY.toFixed(2)} snapped=${snappedIndex} bounds=[${minBound.toFixed(0)}, ${maxBound.toFixed(0)}] target=${oldTarget.toFixed(0)}->${targetScroll.toFixed(0)}`,
-            );
-
-            // Snap logic
+            // Snap logic (End of Gesture)
             snapTimeout = setTimeout(() => {
+                isScrolling = false; // Reset gesture state
+
                 const sectionWidth = window.innerWidth;
                 // Clamp snapIndex to valid range
                 const maxIndex = Math.round(maxScroll / sectionWidth);
@@ -181,11 +191,11 @@
 
             <!-- Section 3: Fridge -->
             <section class="experience-section">
-                <LazyLoader trigger={hasBeenVisited[2]}>
+                {#if snappedIndex === 2}
                     <div class="content-wrapper fridge-wrapper">
-                        <Fridge isActive={snappedIndex === 2} />
+                        <Fridge isActive={true} />
                     </div>
-                </LazyLoader>
+                {/if}
             </section>
 
             <!-- Section 4: Vending Machine -->
