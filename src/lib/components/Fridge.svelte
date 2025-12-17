@@ -27,7 +27,7 @@
     .fridge-container {
         width: 100%;
         height: 100%;
-        background: #111;
+        background: transparent;
         position: relative;
     }
 </style>
