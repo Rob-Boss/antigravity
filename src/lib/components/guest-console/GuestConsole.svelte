@@ -590,12 +590,12 @@
     .render-source {
         position: fixed;
         top: 0;
-        left: 0;
+        left: -10000px; /* Move off-screen safely */
         width: 800px;
         height: 600px;
         background: #000;
         pointer-events: none;
-        z-index: -100; /* Hide behind everything (body background) */
+        z-index: -100;
         opacity: 1; /* Fully opaque for capture */
     }
 </style>
