@@ -17,7 +17,8 @@
     class="fridge-container"
     style:cursor={$draggingMagnet ? "grabbing" : "grab"}
 >
-    <Canvas renderMode="always">
+    <!-- Only render loop when active to save resources on other pages -->
+    <Canvas renderMode={isActive ? "always" : "manual"}>
         <Scene />
     </Canvas>
 </div>

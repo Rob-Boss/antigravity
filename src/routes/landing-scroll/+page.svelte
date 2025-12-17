@@ -3,7 +3,8 @@
     import SwardyLogo from "$lib/components/SwardyLogo.svelte";
     import Fridge from "$lib/components/Fridge.svelte";
     import Sequencer from "$lib/components/Sequencer.svelte";
-    import TealTrapezoid from "$lib/components/cool-car-skins/TealTrapezoid.svelte";
+    import VendingMachine from "$lib/components/merch-lab/VendingMachine2D.svelte";
+    import GuestConsole from "$lib/components/guest-console/GuestConsole.svelte";
     import LazyLoader from "$lib/components/utils/LazyLoader.svelte";
 
     let scrollContainer: HTMLElement;
@@ -14,7 +15,7 @@
     let snapTimeout: ReturnType<typeof setTimeout>;
     let animationFrame: number;
     let snappedIndex = 0;
-    let hasBeenVisited = [true, false, false]; // First section visited by default
+    let hasBeenVisited = [true, false, false, false]; // SEQUENCER, CONSOLE, FRIDGE, VENDING
 
     // Configuration
     const SCROLL_SPEED = 2.5;
@@ -22,14 +23,18 @@
     const SNAP_DELAY = 150; // ms to wait before snapping
 
     onMount(() => {
-        // Calculate max scroll based on content
+        // Robust dimension updates using ResizeObserver
         const updateDimensions = () => {
             if (scrollContainer) {
-                // Total width - viewport width
                 maxScroll = scrollContainer.scrollWidth - window.innerWidth;
             }
         };
 
+        const resizeObserver = new ResizeObserver(() => {
+            updateDimensions();
+        });
+
+        if (scrollContainer) resizeObserver.observe(scrollContainer);
         window.addEventListener("resize", updateDimensions);
         updateDimensions();
 
@@ -69,19 +74,11 @@
         };
         startAnimation();
 
-        window.addEventListener("resize", () => {
-            updateDimensions();
-            startAnimation();
-        });
-        updateDimensions();
-
         const handleWheel = (e: WheelEvent) => {
             startAnimation();
 
-            // Check for pinch-zoom gesture (usually accompanied by ctrlKey)
-            if (e.ctrlKey) {
-                return;
-            }
+            // Check for pinch-zoom gesture
+            if (e.ctrlKey) return;
 
             e.preventDefault();
             e.stopPropagation();
@@ -92,8 +89,12 @@
             // Update target
             targetScroll += e.deltaY * SCROLL_SPEED;
 
-            // Calculate strict bounds based on current snapped index
-            // Can only move to adjacent sections (prev or next)
+            // Simplified Bounds: Allow free scrolling between 0 and maxScroll
+            // This prevents "stuck" states caused by strict adjacent section clamping
+            // targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+
+            // Constrain to adjacent sections relative to the currently snapped section
+            // This implements "One Scene at a Time" scrolling
             const sectionWidth = window.innerWidth;
             const minBound = Math.max(0, (snappedIndex - 1) * sectionWidth);
             const maxBound = Math.min(
@@ -101,13 +102,28 @@
                 (snappedIndex + 1) * sectionWidth,
             );
 
-            // Clamp target to strict bounds
+            const oldTarget = targetScroll;
             targetScroll = Math.max(minBound, Math.min(targetScroll, maxBound));
+
+            // DEBUG LOGS
+            console.log(
+                `Wheel: delta=${e.deltaY.toFixed(2)} snapped=${snappedIndex} bounds=[${minBound.toFixed(0)}, ${maxBound.toFixed(0)}] target=${oldTarget.toFixed(0)}->${targetScroll.toFixed(0)}`,
+            );
 
             // Snap logic
             snapTimeout = setTimeout(() => {
                 const sectionWidth = window.innerWidth;
-                const snapIndex = Math.round(targetScroll / sectionWidth);
+                // Clamp snapIndex to valid range
+                const maxIndex = Math.round(maxScroll / sectionWidth);
+                const snapIndex = Math.max(
+                    0,
+                    Math.min(Math.round(targetScroll / sectionWidth), maxIndex),
+                );
+
+                console.log(
+                    `SNAP: target=${targetScroll.toFixed(0)} index=${snapIndex} (prev=${snappedIndex})`,
+                );
+
                 targetScroll = snapIndex * sectionWidth;
 
                 // Update snapped state
@@ -120,14 +136,15 @@
         };
 
         window.addEventListener("wheel", handleWheel, {
-            capture: true,
+            capture: false,
             passive: false,
         });
 
         return () => {
             window.removeEventListener("resize", updateDimensions);
+            resizeObserver.disconnect();
             window.removeEventListener("wheel", handleWheel, {
-                capture: true,
+                capture: false,
             } as any);
             cancelAnimationFrame(animationFrame);
             clearTimeout(snapTimeout);
@@ -153,20 +170,29 @@
                 </LazyLoader>
             </section>
 
-            <!-- Section 2: Fridge -->
+            <!-- Section 2: Guest Console -->
             <section class="experience-section">
                 <LazyLoader trigger={hasBeenVisited[1]}>
-                    <div class="content-wrapper fridge-wrapper">
-                        <Fridge isActive={snappedIndex === 1} />
+                    <div class="content-wrapper console-wrapper">
+                        <GuestConsole isActive={snappedIndex === 1} />
                     </div>
                 </LazyLoader>
             </section>
 
-            <!-- Section 3: Cool Car Viewer -->
+            <!-- Section 3: Fridge -->
             <section class="experience-section">
                 <LazyLoader trigger={hasBeenVisited[2]}>
-                    <div class="content-wrapper car-wrapper">
-                        <TealTrapezoid isActive={snappedIndex === 2} />
+                    <div class="content-wrapper fridge-wrapper">
+                        <Fridge isActive={snappedIndex === 2} />
+                    </div>
+                </LazyLoader>
+            </section>
+
+            <!-- Section 4: Vending Machine -->
+            <section class="experience-section">
+                <LazyLoader trigger={hasBeenVisited[3]}>
+                    <div class="content-wrapper vending-wrapper">
+                        <VendingMachine />
                     </div>
                 </LazyLoader>
             </section>
@@ -253,8 +279,7 @@
         box-sizing: border-box;
     }
 
-    .car-wrapper {
-        /* Teal Trapezoid scales itself */
-        transform: scale(0.8); /* Scale down slightly to fit nicely */
+    .vending-wrapper {
+        transform: scale(0.9); /* Scale to fit comfortably */
     }
 </style>
