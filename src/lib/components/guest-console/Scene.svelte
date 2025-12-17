@@ -146,49 +146,46 @@
         keyboardTexture.needsUpdate = true;
     }
 
-    // --- BLOOM SETUP ---
-    export let bloomStrength = 0.25;
-    export let bloomRadius = 0.4;
-    export let bloomThreshold = 0.5;
+    // --- BLOOM SETUP (DISABLED for Transparency) ---
+    // export let bloomStrength = 0.25;
+    // export let bloomRadius = 0.4;
+    // export let bloomThreshold = 0.5;
 
-    const renderTarget = new THREE.WebGLRenderTarget(800, 600, {
-        type: THREE.HalfFloatType,
-        format: THREE.RGBAFormat,
-    });
-    const composer = new EffectComposer(renderer, renderTarget);
-    const renderPass = new RenderPass(scene, $camera);
-    const bloomPass = new UnrealBloomPass(
-        new THREE.Vector2($size.width, $size.height),
-        bloomStrength,
-        bloomRadius,
-        bloomThreshold,
-    );
-    const outputPass = new OutputPass();
+    // const renderTarget = new THREE.WebGLRenderTarget(800, 600, {
+    //     type: THREE.HalfFloatType,
+    //     format: THREE.RGBAFormat,
+    // });
+    // const composer = new EffectComposer(renderer, renderTarget);
+    // const renderPass = new RenderPass(scene, $camera);
+    // const bloomPass = new UnrealBloomPass(
+    //     new THREE.Vector2($size.width, $size.height),
+    //     bloomStrength,
+    //     bloomRadius,
+    //     bloomThreshold,
+    // );
+    // const outputPass = new OutputPass();
 
-    composer.addPass(renderPass);
-    composer.addPass(bloomPass);
-    composer.addPass(outputPass);
+    // composer.addPass(renderPass);
+    // composer.addPass(bloomPass);
+    // composer.addPass(outputPass);
 
-    $: renderPass.camera = $camera;
-    $: bloomPass.strength = bloomStrength;
-    $: bloomPass.radius = bloomRadius;
-    $: bloomPass.threshold = bloomThreshold;
-    $: composer.setSize($size.width, $size.height);
+    // $: renderPass.camera = $camera;
+    // $: bloomPass.strength = bloomStrength;
+    // $: bloomPass.radius = bloomRadius;
+    // $: bloomPass.threshold = bloomThreshold;
+    // $: composer.setSize($size.width, $size.height);
 
     // Force transparent background
     renderer.setClearColor(0x000000, 0);
 
-    // Ensure RenderPass doesn't overwrite alpha?
-    // Actually, RenderPass usually inherits clear state if clear=true.
-    // But let's be explicit just in case.
-
-    autoRender.set(false);
+    // Re-enable autoRender (Standard rendering is transparent by default)
+    autoRender.set(true);
 
     // RENDER LOOP & HOVER CHECK
     useTask(
         (delta) => {
             // Render Bloom
-            composer.render();
+            // composer.render();
 
             // Check Hover (Manual Raycast)
             if (keyboardMesh && $camera) {
@@ -199,8 +196,6 @@
                 // Let's check keyboardMesh for now as it covers most of the interaction area.
                 // Actually, the console body is usually separate.
                 // If the user wants "hovering the console", we should probably raycast against the whole scene or specific meshes.
-                // Since `keyboardMesh` is just the keys/panel, if they hover the CRT casing, it might stop scrolling.
-                // Let's raycast against the gltf.scene if possible?
                 // Raycasting whole scene every frame might be expensive-ish but for this low poly model it's fine.
 
                 // However, simpler is better: intersect keyboardMesh is what we care about for *input*.
