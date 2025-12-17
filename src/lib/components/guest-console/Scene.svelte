@@ -175,6 +175,13 @@
     $: bloomPass.threshold = bloomThreshold;
     $: composer.setSize($size.width, $size.height);
 
+    // Force transparent background
+    renderer.setClearColor(0x000000, 0);
+
+    // Ensure RenderPass doesn't overwrite alpha?
+    // Actually, RenderPass usually inherits clear state if clear=true.
+    // But let's be explicit just in case.
+
     autoRender.set(false);
 
     // RENDER LOOP & HOVER CHECK
