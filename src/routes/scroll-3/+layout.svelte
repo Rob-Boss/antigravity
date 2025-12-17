@@ -138,7 +138,7 @@
         margin: 0;
         padding: 0;
         overflow: hidden;
-        background: #000;
+        background: #111;
         color: #fff;
     }
 
@@ -153,7 +153,7 @@
     .logo-header {
         height: 25vh;
         width: 100%;
-        background: #000;
+        background: #111;
         border-bottom: 1px solid #333;
         z-index: 20;
         display: flex;
