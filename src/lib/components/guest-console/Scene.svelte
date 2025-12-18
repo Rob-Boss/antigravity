@@ -146,61 +146,49 @@
         keyboardTexture.needsUpdate = true;
     }
 
-    // --- BLOOM DISABLED FOR TRANSPARENCY MATCH ---
-    // export let bloomStrength = 0.25;
-    // export let bloomRadius = 0.4;
-    // export let bloomThreshold = 0.5;
+    // --- BLOOM SETUP ---
+    export let bloomStrength = 0.25;
+    export let bloomRadius = 0.4;
+    export let bloomThreshold = 0.5;
 
-    // const renderTarget = new THREE.WebGLRenderTarget(800, 600, {
-    //     type: THREE.HalfFloatType,
-    //     format: THREE.RGBAFormat,
-    // });
-    // const composer = new EffectComposer(renderer, renderTarget);
-    // const renderPass = new RenderPass(scene, $camera);
-    // const bloomPass = new UnrealBloomPass(
-    //     new THREE.Vector2($size.width, $size.height),
-    //     bloomStrength,
-    //     bloomRadius,
-    //     bloomThreshold,
-    // );
-    // const outputPass = new OutputPass();
+    const renderTarget = new THREE.WebGLRenderTarget(800, 600, {
+        type: THREE.HalfFloatType,
+        format: THREE.RGBAFormat,
+    });
+    const composer = new EffectComposer(renderer, renderTarget);
+    const renderPass = new RenderPass(scene, $camera);
+    const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2($size.width, $size.height),
+        bloomStrength,
+        bloomRadius,
+        bloomThreshold,
+    );
+    const outputPass = new OutputPass();
 
-    // composer.addPass(renderPass);
-    // composer.addPass(bloomPass);
-    // composer.addPass(outputPass);
+    composer.addPass(renderPass);
+    composer.addPass(bloomPass);
+    composer.addPass(outputPass);
 
-    // $: renderPass.camera = $camera;
-    // $: bloomPass.strength = bloomStrength;
-    // $: bloomPass.radius = bloomRadius;
-    // $: bloomPass.threshold = bloomThreshold;
-    // $: composer.setSize($size.width, $size.height);
+    $: renderPass.camera = $camera;
+    $: bloomPass.strength = bloomStrength;
+    $: bloomPass.radius = bloomRadius;
+    $: bloomPass.threshold = bloomThreshold;
+    $: composer.setSize($size.width, $size.height);
 
-    // FORCE TRANSPARENT CLEAR COLOR (Matches Fridge)
-    renderer.setClearColor(0x000000, 0);
+    // RESTORE BLOOM BACKGROUND (0x111111 matches #4b4b4b CSS)
+    renderer.setClearColor(0x111111, 1);
 
-    // Re-enable autoRender
-    autoRender.set(true);
+    autoRender.set(false);
 
     // RENDER LOOP & HOVER CHECK
     useTask(
         (delta) => {
-            // Render Bloom - DISABLED
-            // composer.render();
+            // Render Bloom
+            composer.render();
 
             // Check Hover (Manual Raycast)
             if (keyboardMesh && $camera) {
                 raycaster.setFromCamera(pointer, $camera);
-                // Intersect keyboard OR screen (if we want robust console hover)
-                // For now, hovering the keyboard mesh is the main trigger.
-                // Maybe check all meshes in scene? Or just the main group?
-                // Let's check keyboardMesh for now as it covers most of the interaction area.
-                // Actually, the console body is usually separate.
-                // If the user wants "hovering the console", we should probably raycast against the whole scene or specific meshes.
-                // Raycasting whole scene every frame might be expensive-ish but for this low poly model it's fine.
-
-                // However, simpler is better: intersect keyboardMesh is what we care about for *input*.
-                // But for *scrolling*, likely the whole console.
-                // Let's try to intersect the whole `gltf.scene` children?
 
                 let hit = false;
                 if ($gltf && $gltf.scene) {
