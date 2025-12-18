@@ -175,8 +175,8 @@
     $: bloomPass.threshold = bloomThreshold;
     $: composer.setSize($size.width, $size.height);
 
-    // ADJUSTING BACKGROUND COLOR (Manual Match loop - Try 4 - Sub-integer precision)
-    renderer.setClearColor(new THREE.Color(0.0568, 0.0568, 0.0568), 1);
+    // ADJUSTING BACKGROUND COLOR (Manual Match loop - Try 5 - 14.25/255)
+    renderer.setClearColor(new THREE.Color(0.0558, 0.0558, 0.0558), 1);
 
     autoRender.set(false);
 
