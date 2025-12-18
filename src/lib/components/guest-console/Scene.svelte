@@ -175,8 +175,8 @@
     $: bloomPass.threshold = bloomThreshold;
     $: composer.setSize($size.width, $size.height);
 
-    // RESTORE BLOOM BACKGROUND (0x111111 matches #4b4b4b CSS)
-    renderer.setClearColor(0x111111, 1);
+    // ADJUSTING BACKGROUND COLOR (Manual Match loop - Try 2)
+    renderer.setClearColor(0x0e0e0e, 1);
 
     autoRender.set(false);
 
