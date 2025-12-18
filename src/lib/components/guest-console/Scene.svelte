@@ -146,45 +146,46 @@
         keyboardTexture.needsUpdate = true;
     }
 
-    // --- BLOOM SETUP ---
-    export let bloomStrength = 0.25;
-    export let bloomRadius = 0.4;
-    export let bloomThreshold = 0.5;
+    // --- BLOOM DISABLED FOR TRANSPARENCY MATCH ---
+    // export let bloomStrength = 0.25;
+    // export let bloomRadius = 0.4;
+    // export let bloomThreshold = 0.5;
 
-    const renderTarget = new THREE.WebGLRenderTarget(800, 600, {
-        type: THREE.HalfFloatType,
-        format: THREE.RGBAFormat,
-    });
-    const composer = new EffectComposer(renderer, renderTarget);
-    const renderPass = new RenderPass(scene, $camera);
-    const bloomPass = new UnrealBloomPass(
-        new THREE.Vector2($size.width, $size.height),
-        bloomStrength,
-        bloomRadius,
-        bloomThreshold,
-    );
-    const outputPass = new OutputPass();
+    // const renderTarget = new THREE.WebGLRenderTarget(800, 600, {
+    //     type: THREE.HalfFloatType,
+    //     format: THREE.RGBAFormat,
+    // });
+    // const composer = new EffectComposer(renderer, renderTarget);
+    // const renderPass = new RenderPass(scene, $camera);
+    // const bloomPass = new UnrealBloomPass(
+    //     new THREE.Vector2($size.width, $size.height),
+    //     bloomStrength,
+    //     bloomRadius,
+    //     bloomThreshold,
+    // );
+    // const outputPass = new OutputPass();
 
-    composer.addPass(renderPass);
-    composer.addPass(bloomPass);
-    composer.addPass(outputPass);
+    // composer.addPass(renderPass);
+    // composer.addPass(bloomPass);
+    // composer.addPass(outputPass);
 
-    $: renderPass.camera = $camera;
-    $: bloomPass.strength = bloomStrength;
-    $: bloomPass.radius = bloomRadius;
-    $: bloomPass.threshold = bloomThreshold;
-    $: composer.setSize($size.width, $size.height);
+    // $: renderPass.camera = $camera;
+    // $: bloomPass.strength = bloomStrength;
+    // $: bloomPass.radius = bloomRadius;
+    // $: bloomPass.threshold = bloomThreshold;
+    // $: composer.setSize($size.width, $size.height);
 
-    // MATCH BACKGROUND COLOR (approx #4b4b4b after ACES Tone Mapping)
-    renderer.setClearColor(0x080808, 1);
+    // FORCE TRANSPARENT CLEAR COLOR (Matches Fridge)
+    renderer.setClearColor(0x000000, 0);
 
-    autoRender.set(false);
+    // Re-enable autoRender
+    autoRender.set(true);
 
     // RENDER LOOP & HOVER CHECK
     useTask(
         (delta) => {
-            // Render Bloom
-            composer.render();
+            // Render Bloom - DISABLED
+            // composer.render();
 
             // Check Hover (Manual Raycast)
             if (keyboardMesh && $camera) {
