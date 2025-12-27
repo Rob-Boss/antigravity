@@ -364,7 +364,14 @@
         width: 300px;
         height: 500px;
         transform: translateZ(100px);
-        background: #4b4b4b;
+        background: linear-gradient(
+            135deg,
+            #1c3b2b 0%,
+            var(--chassis-green) 40%,
+            #8fbc8f 50%,
+            /* Pale highlight */ var(--chassis-green) 60%,
+            #1c3b2b 100%
+        );
         display: flex;
         flex-direction: column;
         padding: 20px;
@@ -381,22 +388,37 @@
     .face-right {
         width: 200px;
         height: 500px;
+        left: 50px;
         transform: rotateY(90deg) translateZ(150px);
-        background: #4b4b4b;
+        background: linear-gradient(
+            135deg,
+            #112211,
+            #1c3b2b
+        ); /* Deep shadow side */
     }
 
     .face-left {
         width: 200px;
         height: 500px;
+        left: 50px;
         transform: rotateY(-90deg) translateZ(150px);
-        background: #4b4b4b;
+        background: linear-gradient(
+            135deg,
+            var(--chassis-green),
+            #8fbc8f 30%,
+            var(--chassis-green)
+        ); /* Highlighted side */
     }
 
     .face-top {
         width: 300px;
         height: 200px;
         transform: rotateX(90deg) translateZ(100px);
-        background: #4b4b4b;
+        background: linear-gradient(
+            to bottom,
+            #8fbc8f,
+            var(--chassis-green)
+        ); /* Top shine */
     }
 
     .face-bottom {
@@ -415,7 +437,7 @@
         box-shadow: inset 0 0 20px #000;
         position: relative;
         overflow: hidden;
-        border: 2px solid #333;
+        border: 2px solid #1a3326;
     }
 
     /* GLASS */
@@ -431,7 +453,7 @@
             rgba(255, 255, 255, 0) 40%,
             rgba(255, 255, 255, 0.05) 100%
         );
-        border: 5px solid #333;
+        border: 5px solid #1a3326;
         pointer-events: none;
         z-index: 10;
         box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1);
@@ -637,7 +659,7 @@
         width: 80%;
         height: 35px;
         background: #111;
-        border: 1px solid #222;
+        border: 1px solid #1a3326;
         color: #333;
         display: flex;
         justify-content: center;
@@ -713,9 +735,16 @@
         right: -100px; /* Slightly wider panel */
         top: 40px;
         width: 90px;
-        background: #4b4b4b;
+        background: linear-gradient(
+            135deg,
+            #1c3b2b 0%,
+            var(--chassis-green) 40%,
+            #8fbc8f 50%,
+            var(--chassis-green) 60%,
+            #1c3b2b 100%
+        );
         padding: 15px 10px;
-        border: 2px solid #444;
+        border: 2px solid #1a3326;
         border-radius: 4px;
         transform: translateZ(80px) rotateY(10deg);
         box-shadow: -10px 10px 20px rgba(0, 0, 0, 0.5);

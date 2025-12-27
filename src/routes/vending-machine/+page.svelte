@@ -10,7 +10,7 @@
     .page-wrapper {
         width: 100vw;
         height: 100vh;
-        background: #111;
+        background: var(--vending-black);
         display: flex;
         justify-content: center;
         align-items: center;

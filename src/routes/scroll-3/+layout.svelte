@@ -138,7 +138,7 @@
         margin: 0;
         padding: 0;
         overflow: hidden;
-        background: #4b4b4b;
+        background: var(--module-grey);
         color: #fff;
     }
 
@@ -153,7 +153,7 @@
     .logo-header {
         height: 25vh;
         width: 100%;
-        background: #4b4b4b;
+        background: var(--module-grey);
         /* border-bottom: 1px solid #333; REMOVED */
         z-index: 20;
         display: flex;
@@ -173,7 +173,7 @@
         width: 100vw;
         position: relative;
         overflow: hidden;
-        background: #4b4b4b;
+        background: var(--module-grey);
     }
 
     .scene-wrapper {
@@ -195,7 +195,9 @@
 
     /* LOADER STYLE */
     .loader-wrapper {
-        background: #4b4b4b; /* Ensure opaque background to hide url change */
+        background: var(
+            --module-grey
+        ); /* Ensure opaque background to hide url change */
         z-index: 10;
         display: flex;
         justify-content: center;
