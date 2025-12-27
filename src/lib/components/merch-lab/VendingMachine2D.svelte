@@ -351,6 +351,7 @@
         width: 300px;
         height: 500px;
         transform-style: preserve-3d;
+        background: #1a3326; /* Fill gaps with dark green */
     }
 
     /* CABINET FACES */
@@ -368,14 +369,18 @@
             135deg,
             #1c3b2b 0%,
             var(--chassis-green) 40%,
-            #8fbc8f 50%,
-            /* Pale highlight */ var(--chassis-green) 60%,
+            #4d7d62 50%,
+            /* Softened highlight */ var(--chassis-green) 60%,
             #1c3b2b 100%
         );
         display: flex;
         flex-direction: column;
         padding: 20px;
         box-sizing: border-box;
+        border-radius: 3px;
+        box-shadow:
+            inset 0 0 10px rgba(0, 0, 0, 0.5),
+            inset 0 0 0 2px rgba(255, 255, 255, 0.05);
     }
 
     .face-back {
@@ -383,6 +388,7 @@
         height: 500px;
         transform: translateZ(-100px) rotateY(180deg);
         background: #4b4b4b;
+        border-radius: 3px;
     }
 
     .face-right {
@@ -395,6 +401,7 @@
             #112211,
             #1c3b2b
         ); /* Deep shadow side */
+        border-radius: 2px;
     }
 
     .face-left {
@@ -405,9 +412,10 @@
         background: linear-gradient(
             135deg,
             var(--chassis-green),
-            #8fbc8f 30%,
+            #4d7d62 30%,
             var(--chassis-green)
         ); /* Highlighted side */
+        border-radius: 2px;
     }
 
     .face-top {
@@ -416,9 +424,10 @@
         transform: rotateX(90deg) translateZ(100px);
         background: linear-gradient(
             to bottom,
-            #8fbc8f,
+            #4d7d62,
             var(--chassis-green)
         ); /* Top shine */
+        border-radius: 3px;
     }
 
     .face-bottom {
@@ -438,6 +447,7 @@
         position: relative;
         overflow: hidden;
         border: 2px solid #1a3326;
+        border-radius: 4px;
     }
 
     /* GLASS */
@@ -457,6 +467,7 @@
         pointer-events: none;
         z-index: 10;
         box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
     }
 
     /* GRID & ITEMS */
@@ -627,16 +638,23 @@
     }
 
     .platform-surface {
-        background: #ccc; /* Visible Silver Bar */
+        background: linear-gradient(
+            to bottom,
+            #050505 0%,
+            #222 40%,
+            #777 50%,
+            #222 60%,
+            #050505 100%
+        );
         width: 230px;
         height: 8px;
         flex-shrink: 0;
-        border: 1px solid #fff;
+        border: 1px solid #444;
         border-radius: 2px;
         /* Remove rotateX so it faces the camera directly as a bar */
         transform: translateZ(60px);
         transform-origin: bottom center;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.8);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
     }
 
     /* BIN */
@@ -739,8 +757,8 @@
             135deg,
             #1c3b2b 0%,
             var(--chassis-green) 40%,
-            #8fbc8f 50%,
-            var(--chassis-green) 60%,
+            #4d7d62 50%,
+            /* Softened highlight */ var(--chassis-green) 60%,
             #1c3b2b 100%
         );
         padding: 15px 10px;
