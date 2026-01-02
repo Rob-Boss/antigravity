@@ -240,7 +240,7 @@
 
 {#if $gltf}
     <Float floatIntensity={0.5} rotationIntensity={0.2}>
-        <T.Group rotation={[0, 0, 0]}>
+        <T.Group rotation={[0, 0, 0]} scale={0.8}>
             <T is={$gltf.scene} />
         </T.Group>
     </Float>

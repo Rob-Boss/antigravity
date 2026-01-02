@@ -344,6 +344,7 @@
         position: relative;
         transform-style: preserve-3d;
         transform: rotateY(-15deg); /* Slight angle to show depth */
+        z-index: 20;
     }
 
     .machine {

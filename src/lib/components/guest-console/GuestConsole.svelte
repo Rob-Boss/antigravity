@@ -570,6 +570,9 @@
     </Canvas>
 </div>
 
+<!-- LCOAL BURIAL SHIELD (Blocks render-source behind global background color) -->
+<div class="burial-shield"></div>
+
 <!-- OFFSCREEN RENDERING SOURCES (Z-HACK HIDDEN) -->
 <div
     class="render-source"
@@ -584,18 +587,30 @@
         width: 100%;
         height: 100%;
         position: relative;
-        z-index: 10;
+        z-index: 20; /* High Foreground: Above static background (10) */
         background-color: transparent; /* Parent handles BG */
+        padding-top: 10vh; /* Reserved space for Swardy logo */
+        box-sizing: border-box;
+    }
+    .burial-shield {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: var(--module-grey);
+        z-index: 10; /* Shield layer: Blocks render-source below it */
+        pointer-events: none;
     }
     .render-source {
         position: fixed;
         top: 0;
-        left: -10000px; /* Move off-screen safely */
+        left: 0; /* Must be on-screen for some capture libs */
         width: 800px;
         height: 600px;
         background: #000;
         pointer-events: none;
-        z-index: -100;
+        z-index: 5; /* Buried: Behind local shield (10) */
         opacity: 1; /* Fully opaque for capture */
     }
 </style>

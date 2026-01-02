@@ -85,7 +85,7 @@
             const containerRect = container.getBoundingClientRect();
             const hScale = containerRect.height / (contentHeight + 40);
             const wScale = containerRect.width / (contentWidth + 40);
-            scale = Math.min(hScale, wScale, 1);
+            scale = Math.min(hScale, wScale, 1) * 0.7;
         }
     }
 
@@ -473,6 +473,9 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        padding-top: 10vh; /* Reserved space for Swardy logo */
+        box-sizing: border-box;
+        z-index: 20;
     }
 
     .scaled-wrapper {

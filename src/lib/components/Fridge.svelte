@@ -29,5 +29,6 @@
         height: 100%;
         background: transparent;
         position: relative;
+        z-index: 20;
     }
 </style>

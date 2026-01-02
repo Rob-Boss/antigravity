@@ -2,7 +2,7 @@
     import { page } from "$app/stores";
     import { goto } from "$app/navigation";
     import SwardyLogo from "$lib/components/SwardyLogo.svelte";
-    import { fly } from "svelte/transition";
+    import { fly, fade } from "svelte/transition";
     import { quartInOut } from "svelte/easing";
     import { onMount, tick } from "svelte";
     import StaticBackground from "$lib/components/visuals/StaticBackground.svelte";
@@ -29,6 +29,11 @@
 
     // Handle Entry Animation on Mount
     onMount(async () => {
+        // Read persisted direction (useful if we wanted arrival slides,
+        // but here we just ensure consistency)
+        const savedDir = sessionStorage.getItem("nav-direction");
+        if (savedDir) direction = parseInt(savedDir);
+
         // Just wait a beat to show the loader, then cut to content
         await new Promise((r) => setTimeout(r, 600));
         showLoader = false;
@@ -39,6 +44,9 @@
 
         isNavigating = true;
         direction = newIndex > effectiveIndex ? 1 : -1;
+
+        // Persist direction for the incoming page load
+        sessionStorage.setItem("nav-direction", direction.toString());
 
         // 1. Enter Loading State (Loader slides in)
         showLoader = true;
@@ -79,13 +87,13 @@
 <div class="page-container">
     <!-- UNIFIED BACKGROUND LAYER (100vh) -->
     <div class="global-static-layer">
-        <StaticBackground
+        <!-- <StaticBackground
             resolution={1.0}
             floor={20}
             ceiling={230}
             speed={0.5}
             opacity={0.5}
-        />
+        /> -->
     </div>
 
     <!-- FLOATING LOGO HEADER -->
@@ -105,20 +113,21 @@
             <div
                 class="scene-wrapper loader-wrapper"
                 in:fly={{
-                    x: direction * 1000,
+                    x: direction * innerWidth,
                     duration: 800,
                     easing: quartInOut,
                 }}
+                out:fade={{ duration: 400 }}
             >
                 <!-- Loading Static Background (Opaque to hide content swap) -->
                 <div class="static-layer-loader">
-                    <StaticBackground
+                    <!-- <StaticBackground
                         resolution={1.0}
                         floor={20}
                         ceiling={230}
                         speed={0.5}
                         opacity={1.0}
-                    />
+                    /> -->
                 </div>
                 <div class="system-loader">
                     <span class="loading-text">LOADING EXPERIENCE...</span>
@@ -132,7 +141,7 @@
             <div
                 class="scene-wrapper"
                 out:fly={{
-                    x: direction * -1000,
+                    x: direction * -innerWidth,
                     duration: 800,
                     easing: quartInOut,
                 }}
@@ -179,8 +188,9 @@
         left: 0;
         width: 100%;
         height: 100%;
-        z-index: 1;
+        z-index: 10; /* Middle layer: behind content, in front of buried UI */
         pointer-events: none;
+        background: var(--module-grey);
     }
 
     .logo-header {
@@ -209,7 +219,7 @@
         height: 100vh; /* Expanded to 100vh */
         position: relative;
         overflow: hidden;
-        z-index: 10;
+        /* z-index removed to break stacking context trap */
         /* Background is transparent to show global static */
     }
 
@@ -220,6 +230,7 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
+        z-index: 50; /* Higher than background (10), lower than loader (200) */
     }
 
     .content-limit {
