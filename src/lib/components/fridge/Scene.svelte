@@ -20,10 +20,11 @@
 
     // Configuration
     const START_Z = 5.0; // Starting zoom (further back)
-    const BASE_Z = 2.5; // Final zoom (close up)
+    const BASE_Z = 3.8; // Final zoom (pulled back even further)
     const INTRO_DURATION = 3.0; // Seconds to zoom in
     const PAN_X_RANGE = 2.5;
     const PAN_Y_RANGE = 1.5;
+    const VERTICAL_OFFSET = 1.4; // Shift camera up significantly so fridge appears lower
     const DAMPING = 0.05;
 
     // State
@@ -44,7 +45,7 @@
 
         // Calculate target X/Y based on mouse position (pan)
         const targetX = mouse.x * PAN_X_RANGE;
-        const targetY = mouse.y * PAN_Y_RANGE;
+        const targetY = mouse.y * PAN_Y_RANGE + VERTICAL_OFFSET;
 
         targetCameraPos.set(targetX, targetY, currentZ);
 
@@ -56,9 +57,10 @@
         if ($camera) {
             $camera.position.copy(currentCameraPos);
             // Look slightly towards center but mostly parallel
+            // Shifting lookAt slightly lower to enhance the "top-down" access
             $camera.lookAt(
                 currentCameraPos.x * 0.8,
-                currentCameraPos.y * 0.8,
+                (currentCameraPos.y - VERTICAL_OFFSET) * 0.8,
                 0,
             );
         }
