@@ -20,11 +20,11 @@
 
     // Configuration
     const START_Z = 5.0; // Starting zoom (further back)
-    const BASE_Z = 3.8; // Final zoom (pulled back even further)
+    const BASE_Z = 2.8; // Zoomed out a tiny bit as requested
     const INTRO_DURATION = 3.0; // Seconds to zoom in
     const PAN_X_RANGE = 2.5;
     const PAN_Y_RANGE = 1.5;
-    const VERTICAL_OFFSET = 1.4; // Shift camera up significantly so fridge appears lower
+    const VERTICAL_OFFSET = 0.7; // Lowered significantly to raise module near header
     const DAMPING = 0.05;
 
     // State
@@ -49,20 +49,14 @@
 
         targetCameraPos.set(targetX, targetY, currentZ);
 
-        // Smoothly move camera (only for pan/tilt now, Z is handled by intro)
-        // We apply damping to X/Y, but Z is already smoothed by the intro lerp
-        // However, using lerp on the whole vector is fine as long as targetZ is smooth
+        // Smoothly move camera
         currentCameraPos.lerp(targetCameraPos, DAMPING);
 
         if ($camera) {
             $camera.position.copy(currentCameraPos);
-            // Look slightly towards center but mostly parallel
-            // Shifting lookAt slightly lower to enhance the "top-down" access
-            $camera.lookAt(
-                currentCameraPos.x * 0.8,
-                (currentCameraPos.y - VERTICAL_OFFSET) * 0.8,
-                0,
-            );
+            // Face straight on (parallel to the fridge plane)
+            // By looking at the same X/Y but at Z=0
+            $camera.lookAt(currentCameraPos.x, currentCameraPos.y, 0);
         }
     });
 
