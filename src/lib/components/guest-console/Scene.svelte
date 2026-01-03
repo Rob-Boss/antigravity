@@ -166,7 +166,7 @@
     const outputPass = new OutputPass();
 
     composer.addPass(renderPass);
-    composer.addPass(bloomPass);
+    // composer.addPass(bloomPass);
     composer.addPass(outputPass);
 
     $: renderPass.camera = $camera;
@@ -175,16 +175,17 @@
     $: bloomPass.threshold = bloomThreshold;
     $: composer.setSize($size.width, $size.height);
 
-    // REVERT TO 'ALMOST THERE' STATE (0x0E0E0E)
-    renderer.setClearColor(0x0e0e0e, 1);
+    // REVERT TO 'ALMOST THERE' STATE (0x0E0E0E) - Set alpha to 0 for transparency
+    renderer.setClearColor(0x000000, 0);
 
     autoRender.set(false);
 
     // RENDER LOOP & HOVER CHECK
     useTask(
         (delta) => {
-            // Render Bloom
-            composer.render();
+            // Bypass composer to ensure transparency
+            renderer.render(scene, $camera);
+            // composer.render();
 
             // Check Hover (Manual Raycast)
             if (keyboardMesh && $camera) {

@@ -45,7 +45,9 @@
         position: relative; /* Context for absolute positioning */
         overflow: hidden;
         /* text-shadow: 0 0 5px #ffb000; */ /* Removed shadow for sharper text? User said clean. */
-        text-shadow: 0 0 2px #ff6600;
+        text-shadow:
+            0 0 8px #ff6600,
+            0 0 2px #ff6600;
         box-sizing: border-box;
     }
 
