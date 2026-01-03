@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
+    import { onMount, onDestroy, createEventDispatcher } from "svelte";
+    const dispatch = createEventDispatcher();
     import { audio } from "$lib/audio";
 
     let canvas: HTMLCanvasElement;
@@ -197,8 +198,28 @@
         });
     }
 
-    function loop() {
-        update();
+    const TARGET_DT = 1000 / 60; // 60fps target
+    let lastTime: number | null = null;
+    let accumulator = 0;
+
+    function loop(timestamp: number) {
+        if (lastTime === null) {
+            lastTime = timestamp;
+        }
+
+        let deltaTime = timestamp - lastTime;
+        lastTime = timestamp;
+
+        // Cap deltaTime to avoid "spiral of death" during major lags
+        if (deltaTime > 100) deltaTime = 100;
+
+        accumulator += deltaTime;
+
+        while (accumulator >= TARGET_DT) {
+            update();
+            accumulator -= TARGET_DT;
+        }
+
         draw();
         animationFrameId = requestAnimationFrame(loop);
     }
@@ -217,7 +238,8 @@
         ctx?.scale(scaleX, scaleY);
 
         initParticles();
-        loop();
+        dispatch("ready");
+        animationFrameId = requestAnimationFrame(loop);
     });
 
     onDestroy(() => {

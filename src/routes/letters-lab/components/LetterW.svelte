@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, createEventDispatcher } from "svelte";
+  const dispatch = createEventDispatcher();
   import { audio } from "$lib/audio";
 
   let svgElement: SVGSVGElement;
@@ -179,6 +180,7 @@
     strings = segments.map(
       (s) => new StringPhysics(s.start, s.end, tension, damping),
     );
+    dispatch("ready");
     loop(performance.now());
   });
 

@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
+    import { onMount, onDestroy, createEventDispatcher } from "svelte";
+    const dispatch = createEventDispatcher();
     import { audio } from "$lib/audio";
 
     let container: HTMLDivElement;
@@ -39,69 +40,76 @@
     const MAX_VELOCITY = 40;
     // Removed SNAP_STRENGTH to restore free spin
 
-    function update() {
-        time += 0.1;
+    const TARGET_DT = 1000 / 60; // 60fps target for physics
+    let lastTime: number | null = null;
+    let accumulator = 0;
 
-        // Gravity: Pull towards 0 degrees (upright)
-        // Convert rotation to radians for sin calculation
-        // We want 0 to be stable, 180 to be unstable
-        // sin(0) = 0, sin(180) = 0
-        // We need a force that pushes back towards 0
-        // If rot is 10, force should be negative. sin(10) is positive. So -sin(rot).
-        const gravity = -Math.sin((rotation * Math.PI) / 180) * 0.4;
-
-        // Only apply gravity if not being interacted with (optional, but feels better)
-        if (!isHovered) {
-            velocity += gravity;
+    function loop(timestamp: number) {
+        if (lastTime === null) {
+            lastTime = timestamp;
         }
 
-        // Apply velocity
-        rotation += velocity;
+        let deltaTime = timestamp - lastTime;
+        lastTime = timestamp;
 
-        // Apply friction
-        let currentFriction = FRICTION;
+        // Cap deltaTime to avoid "spiral of death"
+        if (deltaTime > 100) deltaTime = 100;
 
-        // Anti-Bounce / Soft Landing
-        // Check how close we are to upright (0, 360, -360, etc)
-        // Normalize rotation to -180 to 180 range for easier checking
-        let normalizedRot = rotation % 360;
-        if (normalizedRot > 180) normalizedRot -= 360;
-        if (normalizedRot < -180) normalizedRot += 360;
+        accumulator += deltaTime;
 
-        // If we are close to upright and moving slowly, apply heavy friction
-        if (Math.abs(normalizedRot) < 30 && Math.abs(velocity) < 3) {
-            currentFriction = 0.92; // Heavy friction
+        while (accumulator >= TARGET_DT) {
+            stepPhysics();
+            accumulator -= TARGET_DT;
         }
 
-        velocity *= currentFriction;
+        animationFrameId = requestAnimationFrame(loop);
 
-        // Stop if very slow and practically upright
-        if (Math.abs(velocity) < 0.01 && Math.abs(normalizedRot) < 1) {
-            velocity = 0;
-            // Optional: Snap to exactly 0 if desired, but natural stop is requested
-            // rotation = Math.round(rotation / 360) * 360;
-        }
-
-        animationFrameId = requestAnimationFrame(update);
-
-        // Update drone
+        // Update drone (can be once per frame based on final velocity)
         if (drone) {
             const speed = Math.abs(velocity);
             drone.setFreq(100 + speed * 20);
             drone.setVol(Math.min(speed / 10, 0.5));
         } else if (Math.abs(velocity) > 0.1 && !drone) {
-            // Start drone if moving
             drone = audio.createDDrone(audioVariant, 100);
         } else if (Math.abs(velocity) < 0.1 && drone) {
-            // Stop drone if stopped
             drone.stop();
             drone = null;
         }
     }
 
+    function stepPhysics() {
+        time += 0.1;
+
+        // Gravity: Pull towards 0 degrees (upright)
+        const gravity = -Math.sin((rotation * Math.PI) / 180) * 0.4;
+
+        if (!isHovered) {
+            velocity += gravity;
+        }
+
+        rotation += velocity;
+
+        let currentFriction = FRICTION;
+
+        let normalizedRot = rotation % 360;
+        if (normalizedRot > 180) normalizedRot -= 360;
+        if (normalizedRot < -180) normalizedRot += 360;
+
+        if (Math.abs(normalizedRot) < 30 && Math.abs(velocity) < 3) {
+            currentFriction = 0.92;
+        }
+
+        velocity *= currentFriction;
+
+        if (Math.abs(velocity) < 0.01 && Math.abs(normalizedRot) < 1) {
+            velocity = 0;
+        }
+    }
+
     onMount(() => {
         drone = audio.createDrone(100, "triangle");
-        update();
+        dispatch("ready");
+        animationFrameId = requestAnimationFrame(loop);
     });
 
     onDestroy(() => {

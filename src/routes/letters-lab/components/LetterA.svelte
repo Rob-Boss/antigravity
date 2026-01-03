@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
+    import { onMount, onDestroy, createEventDispatcher } from "svelte";
+    const dispatch = createEventDispatcher();
     import { audio } from "$lib/audio";
 
     let canvas: HTMLCanvasElement;
@@ -237,6 +238,7 @@
         ctx?.scale(scaleX, scaleY);
 
         initParticles();
+        dispatch("ready");
         loop(performance.now());
     });
 

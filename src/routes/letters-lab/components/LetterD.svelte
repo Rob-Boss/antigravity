@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
+    import { onMount, onDestroy, createEventDispatcher } from "svelte";
+    const dispatch = createEventDispatcher();
     import { audio } from "$lib/audio";
 
     let container: HTMLDivElement;
@@ -68,6 +69,7 @@
     }
 
     onMount(() => {
+        dispatch("ready");
         update(performance.now());
     });
     onDestroy(() => {

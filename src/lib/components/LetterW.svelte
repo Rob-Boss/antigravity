@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, createEventDispatcher } from "svelte";
+  const dispatch = createEventDispatcher();
   import { audio } from "$lib/audio";
 
   let svgElement: SVGSVGElement;
@@ -177,23 +178,49 @@
 
   let strings: StringPhysics[] = [];
 
+  const TARGET_DT = 1000 / 60; // 60fps target
+  let lastTime: number | null = null;
+  let accumulator = 0;
+
+  function loop(timestamp: number) {
+    if (lastTime === null) {
+      lastTime = timestamp;
+    }
+
+    let deltaTime = timestamp - lastTime;
+    lastTime = timestamp;
+
+    // Cap deltaTime to avoid "spiral of death" during major lags
+    if (deltaTime > 100) deltaTime = 100;
+
+    accumulator += deltaTime;
+
+    let updated = false;
+    while (accumulator >= TARGET_DT) {
+      strings.forEach((s) => s.update());
+      accumulator -= TARGET_DT;
+      updated = true;
+    }
+
+    if (updated) {
+      strings = strings; // Trigger reactivity
+    }
+
+    animationFrameId = requestAnimationFrame(loop);
+  }
+
   onMount(() => {
     strings = segments.map(
       (s) => new StringPhysics(s.start, s.end, tension, damping),
     );
 
-    loop();
+    dispatch("ready");
+    animationFrameId = requestAnimationFrame(loop);
   });
 
   onDestroy(() => {
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
   });
-
-  function loop() {
-    strings.forEach((s) => s.update());
-    strings = strings; // Trigger reactivity
-    animationFrameId = requestAnimationFrame(loop);
-  }
 
   let lastMouseX = 0;
   let lastMouseY = 0;

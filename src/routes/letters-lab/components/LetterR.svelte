@@ -1,6 +1,7 @@
 <script lang="ts">
     import { spring } from "svelte/motion";
-    import { onMount, onDestroy } from "svelte";
+    import { onMount, onDestroy, createEventDispatcher } from "svelte";
+    const dispatch = createEventDispatcher();
     import { browser } from "$app/environment";
     import { audio } from "$lib/audio";
 
@@ -61,6 +62,10 @@
     $: if (browser && rainbowSpeed > 0 && !animationFrameId) {
         loop(performance.now());
     }
+
+    onMount(() => {
+        dispatch("ready");
+    });
 
     onDestroy(() => {
         if (browser && animationFrameId) {

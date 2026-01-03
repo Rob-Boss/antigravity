@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
+    import { onMount, onDestroy, createEventDispatcher } from "svelte";
+    const dispatch = createEventDispatcher();
     import { spring } from "svelte/motion";
     import { audio } from "$lib/audio";
 
@@ -371,11 +372,37 @@
         ctx.restore();
     }
 
-    function loop() {
-        if (!ctx) return;
+    const TARGET_DT = 1000 / 60; // 60fps target for physics
+    let lastTime: number | null = null;
+    let accumulator = 0;
+
+    function loop(timestamp: number) {
+        if (lastTime === null) {
+            lastTime = timestamp;
+        }
+
+        let deltaTime = timestamp - lastTime;
+        lastTime = timestamp;
+
+        // Cap deltaTime to avoid "spiral of death"
+        if (deltaTime > 100) deltaTime = 100;
+
+        accumulator += deltaTime;
+
+        while (accumulator >= TARGET_DT) {
+            stepPhysics();
+            accumulator -= TARGET_DT;
+        }
+
+        draw();
+
+        animationFrameId = requestAnimationFrame(loop);
+    }
+
+    function stepPhysics() {
         time++;
 
-        // Calculate mouse velocity
+        // Calculate mouse velocity relative to physics step
         const dx = mouseX - lastMouseX;
         const dy = mouseY - lastMouseY;
         mouseVelocity = Math.sqrt(dx * dx + dy * dy);
@@ -389,43 +416,35 @@
             magnetSpring.set(0);
         }
 
-        ctx.clearRect(0, 0, 200, 300);
-
         particles.forEach((p, i) => {
             // Subtle individual particle movement
             const individualWaveX = Math.sin(time * 0.05 + p.phaseOffset) * 1.5;
             const individualWaveY =
                 Math.cos(time * 0.07 + p.phaseOffset * 1.3) * 1.5;
 
-            // Magnetic attraction to cursor with orbital swirling and tendril stretch
+            // Magnetic attraction to cursor
             const distToMouse = Math.sqrt(
                 (p.baseX - mouseX) ** 2 + (p.baseY - mouseY) ** 2,
             );
-            const magnetRadius = 150; // Increased for longer reach
+            const magnetRadius = 150;
 
             let magnetX = 0;
             let magnetY = 0;
             let orbitX = 0;
             let orbitY = 0;
-            let colorSaturation = 0;
-            let colorHue = 0;
-            let colorBrightness = p.brightness;
 
             const isMagnetic = distToMouse < magnetRadius;
-            let magneticStrength = 0;
 
             if (isMagnetic) {
-                magneticStrength =
+                const magneticStrength =
                     (1 - distToMouse / magnetRadius) * $magnetSpring;
                 const magnetForce = magneticStrength * 30;
                 const angle = Math.atan2(mouseY - p.baseY, mouseX - p.baseX);
 
-                // Tendril stretch - particles reaching far out stretch more
-                const stretchFactor = 1 + (1 - magneticStrength) * 2; // Far particles stretch more
+                const stretchFactor = 1 + (1 - magneticStrength) * 2;
                 magnetX = Math.cos(angle) * magnetForce * stretchFactor;
                 magnetY = Math.sin(angle) * magnetForce * stretchFactor;
 
-                // Add orbital swirling motion (perpendicular to magnetic pull)
                 const orbitIntensity = magneticStrength * 15;
                 const orbitAngle = angle + Math.PI / 2;
                 const orbitPhase = time * 0.05 + p.phaseOffset;
@@ -438,33 +457,8 @@
                     Math.sin(orbitPhase) *
                     orbitIntensity;
 
-                // Color only magnetized particles
-                // Use confetti palette for magnetized state
-                const paletteColor =
-                    confettiPalette[
-                        Math.floor(
-                            (p.phaseOffset / (Math.PI * 2)) *
-                                confettiPalette.length,
-                        )
-                    ];
-
-                // Interpolate brightness and saturation based on magnet strength
-                // This prevents the "dark creeping" effect by smoothly transitioning from resting brightness
-                colorHue = paletteColor.h;
-                colorSaturation = paletteColor.s * magneticStrength;
-
-                // Lerp between resting brightness (p.brightness) and palette brightness (paletteColor.l)
-                colorBrightness =
-                    p.brightness +
-                    (paletteColor.l - p.brightness) * magneticStrength;
-
-                // Audio Trigger based on magnetic intensity
-                // Throttle to prevent audio engine overload (400 particles * 60fps is too much)
-                if (
-                    isMagnetic &&
-                    magneticStrength > 0 &&
-                    Math.random() < 0.01
-                ) {
+                // Audio Trigger based on magnetic intensity (keep random throttle)
+                if (magneticStrength > 0 && Math.random() < 0.01) {
                     audio.playYVariant(
                         audioVariant,
                         magneticStrength,
@@ -475,35 +469,58 @@
 
             p.x = p.baseX + individualWaveX + p.driftX + magnetX + orbitX;
             p.y = p.baseY + individualWaveY + p.driftY + magnetY + orbitY;
+        });
+    }
 
-            // Per-particle color dynamics - no changes to keep colors stable
-            // Removed brightness pulsation to avoid unwanted color effects
+    function draw() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, 200, 300);
 
-            // Draw rectangle directly (no metaball)
-            if (!ctx) return;
-            ctx.save();
-            ctx.translate(p.x, p.y);
+        particles.forEach((p) => {
+            let colorSaturation = 0;
+            let colorHue = 0;
+            let colorBrightness = p.brightness;
+
+            const distToMouse = Math.sqrt(
+                (p.baseX - mouseX) ** 2 + (p.baseY - mouseY) ** 2,
+            );
+            const magnetRadius = 150;
+            const magneticStrength =
+                distToMouse < magnetRadius
+                    ? (1 - distToMouse / magnetRadius) * $magnetSpring
+                    : 0;
+
+            if (magneticStrength > 0) {
+                const paletteColor =
+                    confettiPalette[
+                        Math.floor(
+                            (p.phaseOffset / (Math.PI * 2)) *
+                                confettiPalette.length,
+                        )
+                    ];
+                colorHue = paletteColor.h;
+                colorSaturation = paletteColor.s * magneticStrength;
+                colorBrightness =
+                    p.brightness +
+                    (paletteColor.l - p.brightness) * magneticStrength;
+            }
+
+            ctx!.save();
+            ctx!.translate(p.x, p.y);
 
             const rotation = Math.sin(time * 0.02 + p.x * 0.1) * 0.3;
-            ctx.rotate(rotation);
+            ctx!.rotate(rotation);
 
-            // Use magnetized color or grayscale
-            ctx.fillStyle = `hsl(${colorHue}, ${colorSaturation}%, ${colorBrightness}%)`;
+            ctx!.fillStyle = `hsl(${colorHue}, ${colorSaturation}%, ${colorBrightness}%)`;
 
-            // 3D Orbit Scaling
-            // Scale based on orbit phase to simulate depth (larger when "in front", smaller when "behind")
-            // The orbit phase is already calculated as: time * 0.05 + p.phaseOffset
-            // We use cos because the orbitX uses sin, so cos gives us the z-depth
             const orbitPhase = time * 0.05 + p.phaseOffset;
-            const depthScale = 1 + 0.4 * Math.cos(orbitPhase); // Oscillate between 0.6 and 1.4
+            const depthScale = 1 + 0.4 * Math.cos(orbitPhase);
 
             const width = p.size * 1.5 * depthScale;
             const height = p.size * 1.2 * depthScale;
-            ctx.fillRect(-width / 2, -height / 2, width, height);
-            ctx.restore();
+            ctx!.fillRect(-width / 2, -height / 2, width, height);
+            ctx!.restore();
         });
-
-        animationFrameId = requestAnimationFrame(loop);
     }
 
     onMount(() => {
@@ -514,7 +531,8 @@
         ctx?.scale(dpr, dpr);
 
         initParticles();
-        loop();
+        dispatch("ready");
+        animationFrameId = requestAnimationFrame(loop);
     });
 
     onDestroy(() => {

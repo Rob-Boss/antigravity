@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
+    import { onMount, onDestroy, createEventDispatcher } from "svelte";
+    const dispatch = createEventDispatcher();
     import { spring } from "svelte/motion";
     import { audio } from "$lib/audio";
 
@@ -514,6 +515,7 @@
         ctx?.scale(dpr, dpr);
 
         initParticles();
+        dispatch("ready");
         loop();
     });
 

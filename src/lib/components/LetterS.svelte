@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { onMount, onDestroy } from "svelte";
+	import { onMount, onDestroy, createEventDispatcher } from "svelte";
+	const dispatch = createEventDispatcher();
 	import { audio } from "$lib/audio";
 
 	let canvas: HTMLCanvasElement;
@@ -114,6 +115,7 @@
 	function initHairs() {
 		hairs = [];
 
+		// Slow path: Pixel scanning logic...
 		const offscreen = document.createElement("canvas");
 		offscreen.width = LOGICAL_WIDTH;
 		offscreen.height = LOGICAL_HEIGHT;
@@ -231,31 +233,40 @@
 	}
 
 	let currentScale = 1;
+	let lastTime = performance.now();
+	const PHYSICS_STEP = 1000 / 60; // 60Hz sub-stepping for smooth physics
+	let accumulator = 0;
 
 	function update() {
 		if (!ctx || !canvas) return;
 
-		// Clear using logical dimensions (since we are scaled)
-		// Actually, clearRect works in transformed space, so clearing 0,0,logicalW,logicalH works
-		// BUT, to be safe and clear everything, we can reset transform, clear, and restore transform
-		// OR just clear a massive area.
-		// Let's use the known logical size.
-		ctx.clearRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+		const now = performance.now();
+		const dt = now - lastTime;
+		lastTime = now;
 
-		// Physics constants
+		// Limit dt to avoid "spiral of death" or huge jumps on tab resume
+		accumulator += Math.min(dt, 100);
+
+		while (accumulator >= PHYSICS_STEP) {
+			stepPhysics(PHYSICS_STEP / 1000);
+			accumulator -= PHYSICS_STEP;
+		}
+
+		draw();
+
+		animationFrameId = requestAnimationFrame(update);
+	}
+
+	function stepPhysics(dt: number) {
+		// Physics constants (normalized to per-second or per-step)
+		// We'll keep the original logic but scale velocities by dt/step where appropriate
+		// However, for simplicity and stability, we use fixed sub-stepping (dt is always PHYSICS_STEP)
+		// So we just use the original constants but they are applied PHYSICS_STEP times.
+
 		const FRICTION = 0.8;
 		const REPULSION_RADIUS = 40;
 		const FORCE_MULTIPLIER = 0.8;
 
-		// Calculate line width to be at least 1px on screen
-		// currentScale is (screen pixels) / (logical pixels)
-		// We want screen_line_width >= 1
-		// logical_line_width * currentScale >= 1
-		// logical_line_width >= 1 / currentScale
-		const minLineWidth = 1.5 / currentScale;
-		const lineWidth = Math.max(1, minLineWidth);
-
-		// Pass 1: Physics & Direction Calculation
 		hairs.forEach((hair) => {
 			// Mouse interaction
 			const mdx = mouseX - hair.x;
@@ -289,8 +300,6 @@
 				hair.vy *= 0.1;
 			}
 
-			// Calculate normalized direction for alignment
-			// Re-calculate tipDx/Dy after constraint
 			const finalDx = hair.tipX - hair.x;
 			const finalDy = hair.tipY - hair.y;
 			const len = Math.sqrt(finalDx * finalDx + finalDy * finalDy);
@@ -300,7 +309,16 @@
 			}
 		});
 
-		// Pass 2: Alignment Calculation & Drawing
+		mouseVx *= FRICTION;
+		mouseVy *= FRICTION;
+	}
+
+	function draw() {
+		ctx!.clearRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+
+		const minLineWidth = 1.5 / currentScale;
+		const lineWidth = Math.max(1, minLineWidth);
+
 		hairs.forEach((hair) => {
 			// Calculate Alignment (Order Parameter)
 			let sumNx = hair.nx;
@@ -316,24 +334,14 @@
 			const avgNx = sumNx / count;
 			const avgNy = sumNy / count;
 
-			// Alignment score (0 to 1)
-			// If vectors are aligned, length is close to 1. If random, close to 0.
 			const alignment = Math.sqrt(avgNx * avgNx + avgNy * avgNy);
-
-			// Color Logic
-			// Aligned = Rainbow (High Saturation)
-			// Random = Grey (Low Saturation)
-			// Use steeper power curve to make rainbow effect rarer (requires high alignment)
 			const saturation = Math.pow(alignment, 15) * 100;
-
-			// Lightness based on angle (3D effect)
-			const dy = hair.ny; // Normalized Y direction (-1 up, 1 down)
+			const dy = hair.ny;
 			const lighting = -dy * 15;
 			const lightness = Math.max(0, Math.min(100, 50 + lighting));
 
 			ctx!.beginPath();
 			ctx!.moveTo(hair.x, hair.y);
-			// Use quadratic curve for slight bend visual
 			const cx = (hair.x + hair.tipX) / 2;
 			const cy = (hair.y + hair.tipY) / 2;
 			ctx!.quadraticCurveTo(cx, cy, hair.tipX, hair.tipY);
@@ -344,11 +352,6 @@
 			ctx!.stroke();
 			ctx!.globalAlpha = 1.0;
 		});
-
-		mouseVx *= 0.8;
-		mouseVy *= 0.8;
-
-		animationFrameId = requestAnimationFrame(update);
 	}
 
 	function handleMouseMove(e: MouseEvent) {
@@ -410,6 +413,7 @@
 
 		resizeObserver.observe(canvas);
 		update();
+		dispatch("ready");
 
 		return () => {
 			resizeObserver.disconnect();
