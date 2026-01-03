@@ -79,11 +79,11 @@
     </div>
 
     <!-- LOGO HEADER (TOP) -->
-    <header class="logo-header">
+    <!-- <header class="logo-header">
         <div class="logo-wrapper">
             <SwardyLogo scale={logoScale} />
         </div>
-    </header>
+    </header> -->
 
     <div class="viewport">
         {#if showLoader}

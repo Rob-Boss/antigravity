@@ -184,8 +184,8 @@
     useTask(
         (delta) => {
             // Bypass composer to ensure transparency
-            renderer.render(scene, $camera);
-            // composer.render();
+            // renderer.render(scene, $camera);
+            composer.render();
 
             // Check Hover (Manual Raycast)
             if (keyboardMesh && $camera) {
