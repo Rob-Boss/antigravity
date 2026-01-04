@@ -7,6 +7,8 @@
     import LetterD from "$lib/components/LetterD.svelte";
     import LetterY from "$lib/components/LetterY.svelte";
 
+    import SwardyLoadingLogo from "$lib/components/SwardyLoadingLogo.svelte";
+
     let showS = true;
     let showW = true;
     let showA = true;
@@ -44,10 +46,12 @@
 
     let readyCount = 0;
     let isAllReady = false;
+    let isAnimationFinished = false;
 
     $: activeCount = [showS, showW, showA, showR, showD, showY].filter(
         Boolean,
     ).length;
+
     $: if (readyCount >= activeCount && activeCount > 0) {
         isAllReady = true;
     } else if (activeCount === 0) {
@@ -59,8 +63,13 @@
         readyCount++;
     }
 
+    function handleAnimationComplete() {
+        isAnimationFinished = true;
+    }
+
     function toggleAll(val: boolean) {
         isAllReady = false;
+        isAnimationFinished = false;
         readyCount = 0;
         showS = val;
         showW = val;
@@ -86,6 +95,7 @@
                         bind:checked={showS}
                         on:change={() => {
                             isAllReady = false;
+                            isAnimationFinished = false;
                             readyCount = 0;
                         }}
                     /> S</label
@@ -96,6 +106,7 @@
                         bind:checked={showW}
                         on:change={() => {
                             isAllReady = false;
+                            isAnimationFinished = false;
                             readyCount = 0;
                         }}
                     /> W</label
@@ -106,6 +117,7 @@
                         bind:checked={showA}
                         on:change={() => {
                             isAllReady = false;
+                            isAnimationFinished = false;
                             readyCount = 0;
                         }}
                     /> A</label
@@ -116,6 +128,7 @@
                         bind:checked={showR}
                         on:change={() => {
                             isAllReady = false;
+                            isAnimationFinished = false;
                             readyCount = 0;
                         }}
                     /> R</label
@@ -126,6 +139,7 @@
                         bind:checked={showD}
                         on:change={() => {
                             isAllReady = false;
+                            isAnimationFinished = false;
                             readyCount = 0;
                         }}
                     /> D</label
@@ -136,6 +150,7 @@
                         bind:checked={showY}
                         on:change={() => {
                             isAllReady = false;
+                            isAnimationFinished = false;
                             readyCount = 0;
                         }}
                     /> Y</label
@@ -149,27 +164,28 @@
     </div>
 
     <section class="letters-section">
-        {#if activeCount > 0 && !isAllReady}
-            <div class="loading-container">
-                <div class="loading-text">BOOTING...</div>
-                <div class="loading-bar-outer">
-                    <div
-                        class="loading-bar-inner"
-                        style="width: {(readyCount / activeCount) * 100}%"
-                    ></div>
-                </div>
+        {#if activeCount > 0 && !isAnimationFinished}
+            <div
+                class="loading-container"
+                class:fade-out={isAllReady && isAnimationFinished}
+            >
+                <SwardyLoadingLogo
+                    progress={readyCount / activeCount}
+                    isReady={isAllReady}
+                    on:complete={handleAnimationComplete}
+                />
             </div>
         {/if}
 
         <div
             class="letters-container"
-            class:is-visible={isAllReady}
+            class:is-visible={isAnimationFinished}
             style="transform: scale({scale});"
         >
             {#if showS}
                 <div
                     class="letter-wrapper"
-                    style="transform: translate(-394px, 0px); z-index: 1; --delay: 100ms;"
+                    style="transform: translate(-374px, 10px) scale(0.95); z-index: 1; --delay: 100ms;"
                 >
                     <LetterS on:ready={handleReady} />
                 </div>
@@ -177,7 +193,7 @@
             {#if showW}
                 <div
                     class="letter-wrapper"
-                    style="transform: translate(-214px, 0px); z-index: 1; --delay: 200ms;"
+                    style="transform: translate(-214px, 0px) scale(1); z-index: 2; --delay: 300ms;"
                 >
                     <LetterW on:ready={handleReady} />
                 </div>
@@ -185,7 +201,7 @@
             {#if showA}
                 <div
                     class="letter-wrapper"
-                    style="transform: translate(-34px, 0px); z-index: 1; --delay: 300ms;"
+                    style="transform: translate(-34px, 0px) scale(1); z-index: 3; --delay: 500ms;"
                 >
                     <LetterA on:ready={handleReady} />
                 </div>
@@ -193,7 +209,7 @@
             {#if showR}
                 <div
                     class="letter-wrapper"
-                    style="transform: translate(126px, 11px); z-index: 1; --delay: 400ms;"
+                    style="transform: translate(126px, 11px) scale(1); z-index: 4; --delay: 700ms;"
                 >
                     <LetterR
                         on:ready={handleReady}
@@ -208,7 +224,7 @@
             {#if showD}
                 <div
                     class="letter-wrapper"
-                    style="transform: translate(292px, 34px) scale(1); z-index: 10; --delay: 500ms;"
+                    style="transform: translate(267px, 0px) scale(0.9); z-index: 5; --delay: 900ms;"
                 >
                     <LetterD
                         on:ready={handleReady}
@@ -216,8 +232,13 @@
                         holePath="M 120 210 C 140 210, 140 180, 140 160 C 140 140, 130 130, 120 130 C 100 130, 90 150, 90 180 C 90 200, 100 210, 120 210 Z"
                         eyePosition={{ x: 115, y: 170 }}
                         eyeScale={0.7}
+                        scale={1}
                         squashFactor={0.2}
                         blurStrength={0.7}
+                        colorShiftSpeed={0.5}
+                        wobbleAmount={5}
+                        thickness={4}
+                        color="#8ba59e"
                         blurColor="#87ceeb"
                     />
                 </div>
@@ -225,7 +246,7 @@
             {#if showY}
                 <div
                     class="letter-wrapper"
-                    style="transform: translate(438px, 50px) scale(1.1); z-index: 1; --delay: 800ms;"
+                    style="transform: translate(438px, 50px) scale(1.1); z-index: 1; --delay: 1100ms;"
                 >
                     <LetterY
                         on:ready={handleReady}
@@ -242,81 +263,80 @@
 <style>
     main {
         min-height: 100vh;
+        background: #111;
+        color: white;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: flex-start;
-        overflow: hidden;
-        background: #111;
-        color: #fff;
-        font-family: monospace;
     }
 
     .perf-hud {
         position: fixed;
-        bottom: 20px;
-        left: 20px;
+        top: 0;
+        left: 0;
+        right: 0;
         background: rgba(0, 0, 0, 0.8);
-        padding: 15px;
-        border-radius: 8px;
+        backdrop-filter: blur(10px);
+        padding: 1rem;
         z-index: 1000;
-        border: 1px solid #333;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .stats {
+        font-family: monospace;
         font-size: 1.2rem;
-        font-weight: bold;
-        color: #0f0;
+        color: #00ff00;
     }
 
     .controls {
         display: flex;
-        flex-direction: column;
-        gap: 10px;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
     }
 
     .toggles {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 5px;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
     }
 
     .toggles label {
-        cursor: pointer;
-        font-size: 0.8rem;
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 0.5rem;
+        cursor: pointer;
+        font-family: monospace;
     }
 
     .actions {
         display: flex;
-        gap: 5px;
+        gap: 0.5rem;
     }
 
-    button {
+    .actions button {
         background: #333;
-        color: #fff;
+        color: white;
         border: 1px solid #555;
-        padding: 4px 8px;
+        padding: 0.5rem 1rem;
         cursor: pointer;
-        font-size: 0.7rem;
+        font-family: monospace;
     }
 
-    button:hover {
+    .actions button:hover {
         background: #444;
     }
 
     .letters-section {
+        flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 100%;
         position: relative;
-        padding-top: max(20vh, 180px);
+        padding: 100px 20px;
     }
 
     .loading-container {
@@ -329,60 +349,24 @@
         align-items: center;
         gap: 1.5rem;
         z-index: 100;
+        transition: opacity 0.2s ease-out;
     }
 
-    .loading-text {
-        font-family: "Inter", "Outfit", sans-serif;
-        font-weight: 900;
-        font-style: italic;
-        font-size: 0.7rem;
-        letter-spacing: 0.4rem;
-        color: #00ffff;
-        text-shadow:
-            0 0 10px rgba(0, 255, 255, 0.8),
-            0 0 20px rgba(0, 255, 255, 0.4);
-        opacity: 0.8;
-        animation: breath 2s infinite ease-in-out;
-    }
-
-    .loading-bar-outer {
-        width: 120px;
-        height: 1px;
-        background: rgba(0, 255, 255, 0.1);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .loading-bar-inner {
-        height: 100%;
-        background: #00ffff;
-        box-shadow: 0 0 8px #00ffff;
-        transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    @keyframes breath {
-        0%,
-        100% {
-            opacity: 0.4;
-            transform: scale(0.98);
-        }
-        50% {
-            opacity: 1;
-            transform: scale(1);
-        }
+    .loading-container.fade-out {
+        opacity: 0;
+        pointer-events: none;
     }
 
     .letters-container {
         position: relative;
         width: 0;
         height: 0;
-        opacity: 0;
+        visibility: hidden;
         pointer-events: none;
-        transition: opacity 0.2s ease-in;
     }
 
     .letters-container.is-visible {
-        opacity: 1;
+        visibility: visible;
         pointer-events: auto;
     }
 
@@ -395,7 +379,7 @@
         margin-top: -150px;
     }
 
-    /* --- Entrance Animation: Neon Flicker --- */
+    /* Entrance Animation: Neon Flicker */
     .letters-container.is-visible .letter-wrapper {
         animation: neon-flicker 2s steps(1) backwards;
         animation-delay: var(--delay);
@@ -408,7 +392,7 @@
         }
         5% {
             opacity: 1;
-            filter: brightness(2) drop-shadow(0 0 10px currentColor);
+            filter: brightness(2) drop-shadow(0 0 10px white);
         }
         10% {
             opacity: 0;
@@ -418,7 +402,7 @@
         }
         20% {
             opacity: 1;
-            filter: brightness(2) drop-shadow(0 0 10px currentColor);
+            filter: brightness(2) drop-shadow(0 0 10px white);
         }
         25% {
             opacity: 0;
@@ -431,5 +415,19 @@
             opacity: 1;
             filter: brightness(1);
         }
+    }
+
+    /* Global overrides for letter components */
+    :global(.letter-container) {
+        padding: 0 !important;
+        display: flex !important;
+        justify-content: center;
+    }
+
+    :global(.letter-container canvas),
+    :global(.letter-container svg),
+    :global(.letter-container > div) {
+        width: 200px !important;
+        height: 300px !important;
     }
 </style>
