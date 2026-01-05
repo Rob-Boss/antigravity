@@ -15,8 +15,8 @@ const config = {
 				'script-src': ['self', 'unsafe-inline', 'unsafe-eval'],
 				'style-src': ['self', 'unsafe-inline', 'https://fonts.googleapis.com'],
 				'font-src': ['self', 'https://fonts.gstatic.com'],
-				'img-src': ['self', 'data:', 'blob:'],
-				'connect-src': ['self', 'ws:', 'wss:']
+				'img-src': ['self', 'data:', 'blob:', 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com'],
+				'connect-src': ['self', 'ws:', 'wss:', 'data:', 'blob:', 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com']
 			}
 		}
 	}

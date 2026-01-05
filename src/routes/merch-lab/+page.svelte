@@ -1,6 +1,6 @@
 <script lang="ts">
     import VendingClassic from "$lib/components/merch-lab/VendingClassic.svelte";
-    import VendingClassicV2 from "$lib/components/merch-lab/VendingClassicV2.svelte";
+    import VendingMachineV2 from "$lib/components/merch-lab/VendingMachineV2.svelte";
     import VendingGacha from "$lib/components/merch-lab/VendingGacha.svelte";
     // ...
     // ...
@@ -8,7 +8,7 @@
     const experiments = [
         {
             name: "The Classic (Advanced)",
-            component: VendingClassicV2,
+            component: VendingMachineV2,
             description: "V2 Upgrade: Interactive Elevator",
         },
         /*
