@@ -3,19 +3,46 @@
     import VendingSceneV3 from "./VendingSceneV3.svelte";
     import * as THREE from "three";
     import { onMount } from "svelte";
-
-    onMount(() => {
-        console.log("VendingMachineV3: Component Mounted");
-    });
+    import gsap from "gsap";
+    import {
+        Pane,
+        Slider,
+        Folder,
+        Binding,
+        Monitor,
+    } from "svelte-tweakpane-ui";
 
     // --- STATE ---
     let selection = $state("");
     let screenStatus = $state("CHOOSE");
 
     // Animation State
-    let armY = $state(0); // default rest position (origin)
-    let doorGlow = $state(0); // emissive intensity
-    let doorRotation = $state(0); // door opening (radians)
+    let armY = $state(0.96); // Idle height
+    let doorGlow = $state(0);
+    let doorRotation = $state(0);
+
+    // Calibration State (Internal)
+    let cal = $state({
+        y: 0.96,
+        rot: 0,
+        glow: 0,
+        isCalibrating: false,
+    });
+
+    onMount(() => {
+        console.log("VendingMachineV3: Component Mounted");
+        // Apply idle height immediately
+        armY = 0.96;
+    });
+
+    // When calibrating, sync cal values to animation state
+    $effect(() => {
+        if (cal.isCalibrating) {
+            armY = cal.y;
+            doorRotation = cal.rot;
+            doorGlow = cal.glow;
+        }
+    });
 
     // Screen Canvas State
     let canvas: HTMLCanvasElement;
@@ -59,27 +86,78 @@
     });
 
     // --- VENDING SEQUENCE ---
-    const triggerVending = async () => {
+    const triggerVending = () => {
+        cal.isCalibrating = false;
         screenStatus = "VENDING";
 
-        // 1. Arm moves up to pick position
-        armY = 2.0;
+        const row = selection.charAt(0).toLowerCase();
+        const heights: Record<string, number> = {
+            a: 2.78,
+            b: 2.17,
+            c: 1.57,
+            d: 0.96,
+        };
+        const pickHeight = heights[row] || 2.78;
+        const dropHeight = 0.96;
 
-        // 2. Door opens and glows
-        setTimeout(() => {
-            armY = 0.5; // drop position
-            doorGlow = 2.0;
-            doorRotation = -Math.PI / 4; // open door
-        }, 1000);
+        const anim = {
+            y: armY,
+            rotation: 0, // skipping for now
+            glow: 0,
+        };
 
-        // 3. Reset
-        setTimeout(() => {
-            selection = "";
-            screenStatus = "CHOOSE";
-            armY = 0; // back direct to origin
-            doorGlow = 0;
-            doorRotation = 0;
-        }, 5000);
+        const tl = gsap.timeline({
+            onUpdate: () => {
+                armY = anim.y;
+                doorGlow = anim.glow;
+                doorRotation = anim.rotation;
+                // Sync HUD while calibrating/testing
+                cal.y = anim.y;
+                cal.glow = anim.glow;
+            },
+            onComplete: () => {
+                selection = "";
+                screenStatus = "CHOOSE";
+                cal.isCalibrating = false;
+            },
+        });
+
+        // 1. Arm moves to pick height
+        tl.to(anim, {
+            y: pickHeight,
+            duration: 1.2,
+            ease: "power2.inOut",
+        });
+
+        // 2. Pause at pick
+        tl.to({}, { duration: 0.5 });
+
+        // 3. Arm moves down to delivery slot (dropHeight)
+        tl.to(anim, {
+            y: dropHeight,
+            duration: 1.5,
+            ease: "power2.in",
+        });
+
+        // 4. Glow pulse
+        tl.to(anim, {
+            glow: 1.0,
+            duration: 0.8,
+            repeat: 5,
+            yoyo: true,
+            ease: "sine.inOut",
+        });
+
+        // 5. Reset Glow
+        tl.to(anim, {
+            glow: 0,
+            duration: 0.5,
+        });
+
+        // 6. Manual Reset to Idle
+        tl.add(() => {
+            cal.isCalibrating = true;
+        });
     };
 
     // --- HANDLERS ---
@@ -122,6 +200,33 @@
     <p>Selection: {selection || "--"}</p>
 </div>
 
+<!-- Calibration HUD (Toggle with cal.isCalibrating if needed, for now just keeping but adding a hide prop) -->
+{#if cal.isCalibrating}
+    <div
+        style="position: fixed; top: 20px; right: 20px; z-index: 999999; width: 300px; pointer-events: auto !important; background: #000; border: 1px solid lime; border-radius: 8px; overflow: hidden;"
+    >
+        <Pane title="Vending Machine Calibrator" position="inline">
+            <Folder title="Settings" expanded={true}>
+                <Slider
+                    label="Arm Y"
+                    bind:value={cal.y}
+                    min={-2}
+                    max={6}
+                    step={0.01}
+                />
+            </Folder>
+            <Folder title="Debug" expanded={false}>
+                <button
+                    style="width: 100%; padding: 10px; background: #222; color: #666; cursor: pointer; border: 1px solid #444;"
+                    onclick={() => (cal.isCalibrating = false)}
+                >
+                    HIDE HUD
+                </button>
+            </Folder>
+        </Pane>
+    </div>
+{/if}
+
 <style>
     .canvas-container {
         width: 100%;
@@ -142,5 +247,6 @@
         border-radius: 8px;
         max-width: 250px;
         z-index: 10;
+        display: none;
     }
 </style>

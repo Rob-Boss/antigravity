@@ -73,11 +73,14 @@
                 const mesh = child as THREE.Mesh;
 
                 // --- AUTO SMOOTHING (Requested by User) ---
-                mesh.geometry.computeVertexNormals();
-                if (mesh.material && !Array.isArray(mesh.material)) {
-                    (mesh.material as THREE.MeshStandardMaterial).flatShading =
-                        false;
-                    mesh.material.needsUpdate = true;
+                if (mesh.name.toLowerCase() !== "swardy") {
+                    mesh.geometry.computeVertexNormals();
+                    if (mesh.material && !Array.isArray(mesh.material)) {
+                        (
+                            mesh.material as THREE.MeshStandardMaterial
+                        ).flatShading = false;
+                        mesh.material.needsUpdate = true;
+                    }
                 }
                 // ------------------------------------------
 
@@ -106,6 +109,20 @@
                     screenTexture.flipY = false;
                     screenTexture.colorSpace = THREE.SRGBColorSpace;
                     screenTexture.needsUpdate = true;
+                }
+
+                // --- STICKER (Restored to GLB Default) ---
+                if (mesh.name.toLowerCase() === "swardy") {
+                    console.log("Sticker Mesh Found:", mesh.name);
+                    if (mesh.material && !Array.isArray(mesh.material)) {
+                        const m = mesh.material as THREE.MeshStandardMaterial;
+                        // Matching debug page: No color overrides, let GLB color show
+                        m.toneMapped = false;
+                        m.transparent = true;
+                        m.side = THREE.DoubleSide;
+                        m.needsUpdate = true;
+                        console.log("Sticker Material Matched to Debug Setup");
+                    }
                 }
             }
         });
@@ -241,7 +258,7 @@
 
 {#if $gltf}
     <Float floatIntensity={0.5} rotationIntensity={0.2}>
-        <T.Group rotation={[0, 0, 0]} scale={0.8}>
+        <T.Group rotation={[0, 0, 0]} scale={0.95}>
             <T is={$gltf.scene} />
         </T.Group>
     </Float>

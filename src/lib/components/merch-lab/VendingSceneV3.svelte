@@ -52,6 +52,10 @@
     let hoveredMesh: THREE.Mesh | null = null;
     let originalMaterial: THREE.Material | THREE.Material[] | null = null;
 
+    // Item Clones State
+    let itemPositions = $state<Record<string, [number, number, number]>>({});
+    let itemClones = $state<Record<string, THREE.Object3D>>({});
+
     // --- MANUAL RAYCASTER SETUP ---
 
     // 1. Track Mouse Position
@@ -198,8 +202,12 @@
                     }
                 }
 
-                // 4. Emissive (pushdoor)
-                if (lowerName.includes("pushdoor")) {
+                // 4. Emissive (pushdoor and PUSH letters)
+                if (
+                    lowerName.includes("pushdoor") ||
+                    lowerName.includes("push_") ||
+                    lowerName === "push"
+                ) {
                     if (mesh.material && !Array.isArray(mesh.material)) {
                         if (!mesh.userData.materialCloned) {
                             mesh.material = mesh.material.clone();
@@ -208,10 +216,78 @@
                         const mat = mesh.material as THREE.MeshStandardMaterial;
                         mat.emissive = new THREE.Color(0x00ff00);
                         mat.emissiveIntensity = doorGlow;
-                        mat.needsUpdate = true;
                     }
                 }
             });
+
+            // Process slot positions and cloning
+            const newPositions: Record<string, [number, number, number]> = {};
+            const newClones: Record<string, THREE.Object3D> = {};
+            const templateItem = $gltfStore.nodes.Postcard;
+
+            if (templateItem) {
+                // Hide original item
+                templateItem.visible = false;
+
+                // Find all A1-D3 nodes
+                $gltfStore.scene.traverse((node) => {
+                    const name = node.name.toUpperCase();
+                    if (/^[A-D][1-3]$/.test(name)) {
+                        const key = name.toLowerCase();
+                        // Store world position
+                        const worldPos = new THREE.Vector3();
+                        node.getWorldPosition(worldPos);
+                        newPositions[key] = [
+                            worldPos.x,
+                            worldPos.y,
+                            worldPos.z,
+                        ];
+
+                        // Hide the placeholder node
+                        node.visible = false;
+
+                        // Create clone
+                        const clone = templateItem.clone();
+                        clone.visible = true;
+                        newClones[key] = clone;
+                    }
+                });
+
+                itemPositions = newPositions;
+                itemClones = newClones;
+                console.log(
+                    "VendingSceneV3: Populated",
+                    Object.keys(newClones).length,
+                    "slots",
+                );
+            }
+        }
+    });
+
+    // --- ITEM GRID LOGIC ---
+    const rows = ["a", "b", "c", "d"];
+    const cols = [1, 2, 3];
+
+    const vendingItems = $derived.by(() => {
+        const items = [];
+        for (const r of rows) {
+            for (const c of cols) {
+                const key = `${r}${c}`;
+                if (itemPositions[key]) {
+                    items.push({
+                        key,
+                        pos: itemPositions[key],
+                    });
+                }
+            }
+        }
+        return items;
+    });
+
+    useTask((delta) => {
+        if (screenStatus === "VENDING" && selection && $gltfStore) {
+            // Find the item in the scene that matches the selection
+            // We'll handle this by syncing the position property of the T component
         }
     });
 
@@ -237,6 +313,23 @@
         {#if $gltfStore.nodes.pushdoor}
             <T is={$gltfStore.nodes.pushdoor} rotation.x={doorRotation} />
         {/if}
+
+        <!-- Item Grid -->
+        {#each vendingItems as item (item.key)}
+            {@const isSelected =
+                screenStatus === "VENDING" &&
+                selection.toLowerCase() === item.key}
+            {#if itemClones[item.key]}
+                <T
+                    is={itemClones[item.key]}
+                    position={isSelected
+                        ? [item.pos[0], armY - 0.2, item.pos[2]]
+                        : item.pos}
+                />
+            {/if}
+        {/each}
+
+        <!-- Original nodes are hidden in traverse effect -->
     </T>
 {/if}
 
