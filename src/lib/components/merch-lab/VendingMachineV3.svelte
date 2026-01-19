@@ -58,10 +58,12 @@
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, 512, 512);
 
-        // Border
+        // Border (rounded to match screen shape)
         ctx.strokeStyle = "lime";
         ctx.lineWidth = 10;
-        ctx.strokeRect(20, 20, 472, 472);
+        ctx.beginPath();
+        ctx.roundRect(20, 20, 472, 472, 40);
+        ctx.stroke();
 
         // Selection / Status Text
         ctx.fillStyle = "lime";

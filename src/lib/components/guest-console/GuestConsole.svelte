@@ -199,6 +199,7 @@
         const canSubmit = nameDraft.length > 0 && messageDraft.length > 0;
         const btnColor = canSubmit ? "#00ff00" : "#004400";
         ctx.strokeStyle = btnColor;
+        ctx.shadowColor = btnColor; // Match glow to button color
         ctx.lineWidth = 4;
         ctx.strokeRect(650, 20, 130, 160);
         ctx.fillStyle = btnColor;

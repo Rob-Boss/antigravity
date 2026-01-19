@@ -5,29 +5,54 @@
     import { quartInOut } from "svelte/easing";
     import { onMount } from "svelte";
     import SignalStatic from "$lib/components/visuals/SignalStatic.svelte";
+    import BreadcrumbNav from "$lib/components/navigation/BreadcrumbNav.svelte";
 
     const ROUTES = [
+        { id: "swardy", path: "/scroll-5" },
         { id: "sequencer", path: "/scroll-5/sequencer" },
         { id: "console", path: "/scroll-5/console" },
         { id: "fridge", path: "/scroll-5/fridge" },
         { id: "vending", path: "/scroll-5/vending" },
     ];
 
-    $: currentIndex = ROUTES.findIndex((r) =>
-        $page.url.pathname.includes(r.id),
-    );
+    $: currentIndex = ROUTES.findIndex((r) => r.path === $page.url.pathname);
     $: effectiveIndex = currentIndex === -1 ? 0 : currentIndex;
 
     let isNavigating = false;
     let showLoader = true;
     let direction = 1;
+    let transitionAxis: "x" | "y" = "y";
     let innerWidth = 1000;
+    let innerHeight = 800;
+
+    function getAxis(a: number, b: number): "x" | "y" {
+        const low = Math.min(a, b);
+        const high = Math.max(a, b);
+        // 0-1 (Swardy-Seq) -> Y
+        // 1-2 (Seq-Console) -> X
+        // 2-3 (Console-Fridge) -> Y
+        // 3-4 (Fridge-Vending) -> X
+        if ((low === 0 && high === 1) || (low === 2 && high === 3)) {
+            return "y";
+        }
+        return "x";
+    }
 
     $: logoScale = Math.max(0.3, Math.min(0.8, innerWidth / 1200));
 
     onMount(async () => {
         const savedDir = sessionStorage.getItem("nav-direction");
         if (savedDir) direction = parseInt(savedDir);
+
+        const fromIndexStr = sessionStorage.getItem("nav-from-index");
+        if (fromIndexStr !== null) {
+            const fromIndex = parseInt(fromIndexStr);
+            transitionAxis = getAxis(fromIndex, effectiveIndex);
+        } else {
+            // Default load (from Intro or direct link)
+            transitionAxis = "y";
+        }
+
         await new Promise((r) => setTimeout(r, 600));
         showLoader = false;
     });
@@ -36,7 +61,13 @@
         if (newIndex < 0 || newIndex >= ROUTES.length) return;
         isNavigating = true;
         direction = newIndex > effectiveIndex ? 1 : -1;
+
+        // Set the axis for the outgoing animation
+        transitionAxis = getAxis(effectiveIndex, newIndex);
+
         sessionStorage.setItem("nav-direction", direction.toString());
+        sessionStorage.setItem("nav-from-index", effectiveIndex.toString());
+
         showLoader = true;
         await new Promise((r) => setTimeout(r, 800));
         window.location.assign(ROUTES[newIndex].path);
@@ -65,6 +96,7 @@
     on:wheel|nonpassive={handleWheel}
     on:keydown={handleKey}
     bind:innerWidth
+    bind:innerHeight
 />
 
 <div class="page-container">
@@ -86,11 +118,18 @@
     </header> -->
 
     <div class="viewport">
+        <BreadcrumbNav
+            currentIndex={effectiveIndex}
+            routes={ROUTES}
+            onNavigate={navigate}
+        />
+
         {#if showLoader}
             <div
                 class="scene-wrapper loader-wrapper"
                 in:fly={{
-                    x: direction * innerWidth,
+                    x: transitionAxis === "x" ? direction * innerWidth : 0,
+                    y: transitionAxis === "y" ? direction * innerHeight : 0,
                     duration: 800,
                     easing: quartInOut,
                 }}
@@ -112,7 +151,8 @@
             <div
                 class="scene-wrapper content-wrapper"
                 out:fly={{
-                    x: direction * -innerWidth,
+                    x: transitionAxis === "x" ? direction * -innerWidth : 0,
+                    y: transitionAxis === "y" ? direction * -innerHeight : 0,
                     duration: 800,
                     easing: quartInOut,
                 }}

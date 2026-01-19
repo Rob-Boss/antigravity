@@ -176,6 +176,11 @@
 
                 mesh.visible = true;
 
+                // Neutralize raycasting on text meshes so clicks pass through to buttons
+                if (lowerName.startsWith("text")) {
+                    mesh.raycast = () => {};
+                }
+
                 // 2. Shading Fix
                 if (lowerName.includes("push") || lowerName.includes("door")) {
                     mesh.geometry.computeVertexNormals();
