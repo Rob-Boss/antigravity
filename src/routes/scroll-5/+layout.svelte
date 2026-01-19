@@ -162,16 +162,6 @@
                 </div>
             </div>
         {/if}
-
-        <nav class="nav-dots">
-            {#each ROUTES as route, i}
-                <button
-                    class="dot"
-                    class:active={i === effectiveIndex}
-                    on:click={() => !isNavigating && navigate(i)}
-                ></button>
-            {/each}
-        </nav>
     </div>
 </div>
 
@@ -286,31 +276,5 @@
         50% {
             opacity: 0.5;
         }
-    }
-
-    .nav-dots {
-        position: absolute;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        gap: 15px;
-        z-index: 300;
-    }
-
-    .dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: #333;
-        border: 1px solid #555;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-
-    .dot.active {
-        background: #fff;
-        transform: scale(1.2);
-        box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
     }
 </style>
