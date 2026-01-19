@@ -92,7 +92,7 @@
     <!-- Dynamic Label that follows the active dot -->
     <div
         class="location-label"
-        style="transform: translate({activePoint.x - 5.5}px, {activePoint.y}px)
+        style="transform: translate({activePoint.x - 6.5}px, {activePoint.y}px)
                translateY({currentIndex === 0 || currentIndex === 2
             ? -15
             : 15}px)
