@@ -56,9 +56,8 @@
             <div class="control-row">
                 <div class="control-group">
                     <div class="label-row">
-                        <label>Black Point</label>
-                        <span class="value">{Math.round(blackPoint * 255)}</span
-                        >
+                        <label>blackPoint</label>
+                        <span class="value">{blackPoint.toFixed(2)}</span>
                     </div>
                     <input
                         type="range"
@@ -70,9 +69,8 @@
                 </div>
                 <div class="control-group">
                     <div class="label-row">
-                        <label>White Point</label>
-                        <span class="value">{Math.round(whitePoint * 255)}</span
-                        >
+                        <label>whitePoint</label>
+                        <span class="value">{whitePoint.toFixed(2)}</span>
                     </div>
                     <input
                         type="range"

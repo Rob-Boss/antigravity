@@ -66,12 +66,18 @@
         };
     })();
 
+    // Detect single-neighbor mode (endpoints)
+    $: hasSingleNeighbor = (prevDir && !nextDir) || (!prevDir && nextDir);
+    $: singleDir = prevDir || nextDir;
+
     // Determine CSS variables for glide animation
     $: glideVars = `
         --dx1: ${prevDir ? dirMap[prevDir].dx : 0}px;
         --dy1: ${prevDir ? dirMap[prevDir].dy : 0}px;
         --dx2: ${nextDir ? dirMap[nextDir].dx : 0}px;
         --dy2: ${nextDir ? dirMap[nextDir].dy : 0}px;
+        --dxSingle: ${singleDir ? dirMap[singleDir].dx : 0}px;
+        --dySingle: ${singleDir ? dirMap[singleDir].dy : 0}px;
         --gx: ${groupOffset.x}px;
         --gy: ${groupOffset.y}px;
     `;
@@ -251,6 +257,7 @@
                             {#if !isMobileMenuOpen}
                                 <circle
                                     class="icon-dot-current"
+                                    class:single-neighbor={hasSingleNeighbor}
                                     cx="12"
                                     cy="12"
                                     r="2.5"
@@ -357,8 +364,8 @@
         left: 0;
         width: 100vw;
         height: 100vh;
-        background: rgba(0, 0, 0, 0.9);
-        backdrop-filter: blur(20px);
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(12px);
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -491,6 +498,10 @@
         animation: glide-sequence 2s infinite ease-in-out;
     }
 
+    .fab-svg .icon-dot-current.single-neighbor {
+        animation: glide-bounce 1s infinite ease-in-out;
+    }
+
     @keyframes glide-sequence {
         0%,
         100% {
@@ -504,6 +515,16 @@
         }
         75% {
             transform: translate(var(--dx2, 0), var(--dy2, 0));
+        }
+    }
+
+    @keyframes glide-bounce {
+        0%,
+        100% {
+            transform: translate(0, 0);
+        }
+        50% {
+            transform: translate(var(--dxSingle, 0), var(--dySingle, 0));
         }
     }
 
