@@ -9,6 +9,10 @@
 
     export let isActive = false;
 
+    // Mobile detection
+    let isMobile = false;
+    let hiddenInput: HTMLInputElement;
+
     // Containers
     let uiContainer: HTMLElement; // Main Screen
     let kbContainer: HTMLElement; // Keyboard Screen
@@ -397,7 +401,48 @@
         window.removeEventListener("mouseup", endDrag);
     };
 
+    // Mobile input handler
+    const handleMobileInput = (e: Event) => {
+        if (!isActive || !activeField) return;
+        const target = e.target as HTMLInputElement;
+        const value = target.value;
+
+        if (activeField === "name") {
+            nameDraft = value.slice(0, MAX_NAME_LEN);
+        } else if (activeField === "message") {
+            messageDraft = value.slice(0, MAX_MSG_LEN);
+        }
+        updateKeyboard();
+    };
+
+    const handleMobileKeydown = (e: KeyboardEvent) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            if (activeField === "name") {
+                activeField = "message";
+                syncHiddenInput();
+            } else if (activeField === "message" && nameDraft && messageDraft) {
+                submitEntry();
+                syncHiddenInput();
+            }
+        }
+    };
+
+    const syncHiddenInput = () => {
+        if (!hiddenInput) return;
+        hiddenInput.value = activeField === "name" ? nameDraft : messageDraft;
+    };
+
+    const focusMobileInput = () => {
+        if (!isMobile || !hiddenInput) return;
+        syncHiddenInput();
+        hiddenInput.focus();
+    };
+
     onMount(() => {
+        // Detect mobile/touch device
+        isMobile = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+
         window.addEventListener("keydown", handleKeydown);
         setTimeout(() => {
             updateKeyboard();
@@ -421,7 +466,22 @@
     on:mouseenter={() => (isHovering = true)}
     on:mouseleave={() => (isHovering = false)}
     on:mousedown={startDrag}
+    on:click={focusMobileInput}
 >
+    <!-- Hidden input for mobile keyboard -->
+    {#if isMobile}
+        <input
+            bind:this={hiddenInput}
+            type="text"
+            class="hidden-mobile-input"
+            on:input={handleMobileInput}
+            on:keydown={handleMobileKeydown}
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+        />
+    {/if}
     <!-- Threlte Stage (Size handled by parent) -->
     <div class="container">
         <Canvas renderMode={isActive ? "always" : "manual"}>
@@ -504,5 +564,15 @@
         pointer-events: none;
         z-index: 5;
         opacity: 1;
+    }
+    .hidden-mobile-input {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+        opacity: 0;
+        width: 1px;
+        height: 1px;
+        border: none;
+        background: transparent;
     }
 </style>
