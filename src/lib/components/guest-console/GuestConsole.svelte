@@ -262,7 +262,16 @@
         ];
         nameDraft = "";
         messageDraft = "";
-        activeField = "name";
+
+        // Mobile: dismiss keyboard and deactivate fields
+        // Desktop: keep name field active
+        if (isMobile) {
+            activeField = null;
+            hiddenInput?.blur();
+        } else {
+            activeField = "name";
+        }
+
         syncHiddenInput();
         updateScreen();
         updateKeyboard();
@@ -433,7 +442,13 @@
 
     const syncHiddenInput = () => {
         if (!hiddenInput) return;
-        hiddenInput.value = activeField === "name" ? nameDraft : messageDraft;
+        // Handle null activeField (no field selected)
+        if (activeField === null) {
+            hiddenInput.value = "";
+        } else {
+            hiddenInput.value =
+                activeField === "name" ? nameDraft : messageDraft;
+        }
     };
 
     const focusMobileInput = () => {
@@ -445,6 +460,12 @@
     onMount(() => {
         // Detect mobile/touch device
         isMobile = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+
+        // Mobile: start with no field active (keyboard hidden)
+        // Desktop: start with name field active
+        if (isMobile) {
+            activeField = null;
+        }
 
         window.addEventListener("keydown", handleKeydown);
         setTimeout(() => {
