@@ -243,6 +243,7 @@
         } else {
             activeField = activeField === "name" ? "message" : "name";
             selectionCount = 0;
+            syncHiddenInput();
         }
         updateKeyboard();
     };
