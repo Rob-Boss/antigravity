@@ -263,6 +263,7 @@
         nameDraft = "";
         messageDraft = "";
         activeField = "name";
+        syncHiddenInput();
         updateScreen();
         updateKeyboard();
     };
