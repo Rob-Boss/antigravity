@@ -12,6 +12,7 @@
     // Mobile detection
     let isMobile = false;
     let hiddenInput: HTMLInputElement;
+    let isMobileKeyboardOpen = false;
 
     // Containers
     let uiContainer: HTMLElement; // Main Screen
@@ -476,6 +477,8 @@
             class="hidden-mobile-input"
             on:input={handleMobileInput}
             on:keydown={handleMobileKeydown}
+            on:focus={() => (isMobileKeyboardOpen = true)}
+            on:blur={() => (isMobileKeyboardOpen = false)}
             autocomplete="off"
             autocorrect="off"
             autocapitalize="off"
@@ -483,7 +486,7 @@
         />
     {/if}
     <!-- Threlte Stage (Size handled by parent) -->
-    <div class="container">
+    <div class="container" class:keyboard-open={isMobileKeyboardOpen}>
         <Canvas renderMode={isActive ? "always" : "manual"}>
             <Scene
                 {screenTexture}
@@ -534,6 +537,10 @@
         background-color: transparent;
         padding-top: 10vh;
         box-sizing: border-box;
+        transition: transform 0.3s ease-out;
+    }
+    .container.keyboard-open {
+        transform: translateY(-35vh);
     }
     .shield-static {
         position: fixed;
